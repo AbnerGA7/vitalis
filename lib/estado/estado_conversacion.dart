@@ -168,10 +168,17 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
 
   Future<void> _hablar(String texto) async {
     try {
-      await ref.read(sintesisVozProvider).hablar(texto);
+      // Tope de tiempo también aquí: el modo manos-libres espera a que
+      // termine de hablar para volver a escuchar (_hablarYSeguirEscuchando),
+      // así que un motor de TTS colgado dejaría el micro sin reabrirse
+      // nunca, en silencio, sin ningún aviso.
+      await ref
+          .read(sintesisVozProvider)
+          .hablar(texto)
+          .timeout(const Duration(seconds: 20));
     } on Exception {
       // La respuesta ya está en pantalla y anunciada al lector; si falla la
-      // voz, no hay por qué interrumpir la conversación.
+      // voz (o se cuelga), no hay por qué interrumpir la conversación.
     }
   }
 
