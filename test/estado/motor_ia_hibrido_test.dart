@@ -117,4 +117,23 @@ void main() {
     expect(instruccion, contains('Fuerza sentada'));
     expect(instruccion, contains('español'));
   });
+
+  test('la instrucción de sistema pide vocabulario peruano y respeto', () {
+    final instruccion = instruccionSistemaAsistente(_contexto());
+    expect(instruccion, contains('peruan'));
+    expect(instruccion, contains('respetuoso'));
+  });
+
+  test(
+      'una respuesta despectiva sobre el peso se descarta antes de llegar '
+      'a la persona', () async {
+    gestor.estado = EstadoModeloIA.listo;
+    conversador.respuesta = 'Con lo gorda que estás, mejor ni preguntes.';
+
+    final respuesta = await hibrido.responder('¿cómo voy con la dieta?');
+
+    expect(respuesta.esConversacionLibre, isTrue);
+    expect(respuesta.texto, isNot(contains('gorda')));
+    expect(respuesta.texto, contains('Prefiero no entrar en eso'));
+  });
 }
