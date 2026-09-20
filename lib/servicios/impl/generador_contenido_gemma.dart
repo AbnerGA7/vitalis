@@ -19,11 +19,17 @@ class GeneradorContenidoGemma implements GeneradorContenidoIA {
     required String instruccionSistema,
     required String peticion,
   }) async {
+    // `FlutterGemma.getActiveModel()` no devuelve una instancia compartida:
+    // cada llamada carga un modelo nuevo (ver su propia implementación). Sin
+    // cerrarlo después, cada «Generar con IA» dejaba un modelo entero sin
+    // liberar en memoria, y el siguiente intento competía por los mismos
+    // recursos — eso es lo que hacía que la generación nunca terminara.
+    InferenceModel? modelo;
     try {
-      final modelo = await FlutterGemma.getActiveModel(maxTokens: 1024);
+      modelo = await FlutterGemma.getActiveModel(maxTokens: 768);
       final chat = await modelo.createChat(
         systemInstruction: instruccionSistema,
-        maxOutputTokens: 500,
+        maxOutputTokens: 350,
         temperature: 0.8,
       );
       await chat.addQuery(Message.text(text: peticion, isUser: true));
@@ -37,6 +43,8 @@ class GeneradorContenidoGemma implements GeneradorContenidoIA {
       // Sin modelo listo, error del plugin nativo, lo que sea: se traduce en
       // null y quien llama cae al catálogo de respaldo (sección 4.3, 4.5).
       return null;
+    } finally {
+      await modelo?.close();
     }
   }
 }
