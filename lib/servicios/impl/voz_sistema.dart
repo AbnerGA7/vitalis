@@ -7,6 +7,8 @@
 /// que es la alternativa que exige AC-11.
 library;
 
+import 'dart:async';
+
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../contratos/contratos.dart';
@@ -16,8 +18,13 @@ class VozSistema implements Voz {
 
   static const String _localeEspanol = 'es_ES';
 
+  /// Silencio tras el que se da por cerrado el turno, tanto para el propio
+  /// `pauseFor` del reconocedor como para el temporizador de respaldo.
+  static const Duration _pausaFinal = Duration(seconds: 3);
+
   final SpeechToText _motor;
   bool _iniciado = false;
+  Timer? _temporizadorCierre;
 
   @override
   bool get escuchando => _motor.isListening;
@@ -49,20 +56,30 @@ class VozSistema implements Voz {
     }
     try {
       await _motor.listen(
-        onResult: (resultado) => alTranscribir(
-          Transcripcion(
+        onResult: (resultado) {
+          final transcripcion = Transcripcion(
             texto: resultado.recognizedWords,
             definitiva: resultado.finalResult,
-          ),
-        ),
+          );
+          if (transcripcion.definitiva) {
+            _temporizadorCierre?.cancel();
+          } else {
+            _reprogramarCierreDeRespaldo(transcripcion, alTranscribir);
+          }
+          alTranscribir(transcripcion);
+        },
         listenOptions: SpeechListenOptions(
           // El reconocimiento nunca sale del dispositivo.
           onDevice: true,
           partialResults: true,
           listenMode: ListenMode.dictation,
           localeId: _localeEspanol,
-          cancelOnError: true,
-          pauseFor: const Duration(seconds: 3),
+          // Un error transitorio (p. ej. un instante sin habla detectada) no
+          // debe abortar el turno entero: se deja que `pauseFor`, o el
+          // temporizador de respaldo de abajo, lo cierren con normalidad en
+          // vez de mandar a la persona directo al mensaje de error.
+          cancelOnError: false,
+          pauseFor: _pausaFinal,
           listenFor: const Duration(seconds: 30),
         ),
       );
@@ -71,8 +88,27 @@ class VozSistema implements Voz {
     }
   }
 
+  /// Red de seguridad para el manos-libres: en algunos reconocedores Android,
+  /// `finalResult` no siempre llega de forma fiable tras `pauseFor`. Si pasa
+  /// ese mismo silencio sin una transcripción nueva y ya hay texto dictado,
+  /// se cierra el turno a mano en vez de dejar a la persona esperando una
+  /// respuesta que nunca llega.
+  void _reprogramarCierreDeRespaldo(
+    Transcripcion parcial,
+    void Function(Transcripcion) alTranscribir,
+  ) {
+    _temporizadorCierre?.cancel();
+    if (parcial.texto.trim().isEmpty) return;
+    _temporizadorCierre = Timer(_pausaFinal, () async {
+      if (!_motor.isListening) return;
+      await _motor.stop();
+      alTranscribir(Transcripcion(texto: parcial.texto, definitiva: true));
+    });
+  }
+
   @override
   Future<void> detener() async {
+    _temporizadorCierre?.cancel();
     if (_motor.isListening) await _motor.stop();
   }
 }
