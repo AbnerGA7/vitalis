@@ -29,7 +29,7 @@ class PaletaNocturne {
     texto: Color(0xFFEAF1FF),
     textoSuave: Color(0xFFA8BEE8),
     borde: Color(0xFF2A4278),
-    acento: Color(0xFF3B82F6),
+    acento: Color(0xFF3380FF),
     acentoSuave: Color(0xFF17294D),
     tintaSobreAcento: Color(0xFF0D1B33),
   );
@@ -42,7 +42,7 @@ class PaletaNocturne {
     texto: Color(0xFF0D1B33),
     textoSuave: Color(0xFF45577A),
     borde: Color(0xFFC2D4F5),
-    acento: Color(0xFF2563EB),
+    acento: Color(0xFF1450D9),
     acentoSuave: Color(0xFFD7E4FC),
     tintaSobreAcento: Color(0xFFFFFFFF),
   );
