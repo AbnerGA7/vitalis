@@ -15,13 +15,16 @@ class ConversadorGemma implements ConversadorIA {
   @override
   Future<void> reiniciar({required String instruccionSistema}) async {
     await _modelo?.close();
-    _modelo = await FlutterGemma.getActiveModel(maxTokens: 1024);
+    // Ventana de contexto más pequeña: la conversación de Inicio es corta y
+    // efímera (RF-16), y un contexto menor le cuesta menos procesar al
+    // modelo en cada turno.
+    _modelo = await FlutterGemma.getActiveModel(maxTokens: 512);
     _chat = await _modelo!.createChat(
       systemInstruction: instruccionSistema,
-      // Respuestas más cortas generan antes: el prompt ya pide frases
-      // cortas, así que 140 tokens de margen no recorta el contenido, solo
-      // la latencia del chat de voz.
-      maxOutputTokens: 140,
+      // Respuestas más cortas generan antes: el prompt ya pide frases muy
+      // cortas, así que este margen no recorta el contenido, solo la
+      // latencia del chat de voz.
+      maxOutputTokens: 96,
       temperature: 0.7,
     );
   }
