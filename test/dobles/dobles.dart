@@ -29,6 +29,7 @@ class AlmacenFalso implements Almacen {
   final Map<String, int> agua = {};
   final List<SesionEntreno> sesiones = [];
   String? urlModeloIA;
+  final Map<String, Rutina> rutinasIA = {};
 
   @override
   Future<Perfil?> leerPerfil() async => perfil;
@@ -70,6 +71,13 @@ class AlmacenFalso implements Almacen {
   Future<void> guardarUrlModeloIA(String? url) async => urlModeloIA = url;
 
   @override
+  Future<Rutina?> leerRutinaIA(DateTime dia) async => rutinasIA[_clave(dia)];
+
+  @override
+  Future<void> guardarRutinaIA(DateTime dia, Rutina rutina) async =>
+      rutinasIA[_clave(dia)] = rutina;
+
+  @override
   Future<String> exportar() async => '{"perfil":"simulado"}';
 
   @override
@@ -80,6 +88,7 @@ class AlmacenFalso implements Almacen {
     agua.clear();
     sesiones.clear();
     urlModeloIA = null;
+    rutinasIA.clear();
   }
 
   static String _clave(DateTime fecha) =>
@@ -211,6 +220,21 @@ class ConversadorIAFalso implements ConversadorIA {
     mensajesRecibidos.add(texto);
     final fallo = fallarCon;
     if (fallo != null) throw fallo;
+    return respuesta;
+  }
+}
+
+/// Generador de contenido simulado: devuelve lo que la prueba prepare.
+class GeneradorContenidoIAFalso implements GeneradorContenidoIA {
+  String? respuesta;
+  final List<String> peticionesRecibidas = [];
+
+  @override
+  Future<String?> generar({
+    required String instruccionSistema,
+    required String peticion,
+  }) async {
+    peticionesRecibidas.add(peticion);
     return respuesta;
   }
 }

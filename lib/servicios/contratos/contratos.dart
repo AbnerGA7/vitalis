@@ -41,6 +41,11 @@ abstract interface class Almacen {
   Future<String?> leerUrlModeloIA();
   Future<void> guardarUrlModeloIA(String? url);
 
+  /// Rutina generada por IA para [dia]. Devuelve `null` si no hay ninguna
+  /// guardada para ese día (mismo criterio por día que [leerAgua]).
+  Future<Rutina?> leerRutinaIA(DateTime dia);
+  Future<void> guardarRutinaIA(DateTime dia, Rutina rutina);
+
   /// Volcado legible de todo lo guardado (RF-52).
   Future<String> exportar();
 
@@ -235,4 +240,17 @@ abstract interface class ConversadorIA {
 
   /// Responde dentro de la conversación en curso.
   Future<String> responder(String texto);
+}
+
+/// Generación de contenido de una sola vuelta (recetas, ejercicios...), sin
+/// memoria de turnos. Separado de [ConversadorIA] porque no comparte su
+/// sesión: no debe mezclarse con la memoria de la conversación del
+/// asistente ni verse afectado por ella. Devuelve `null` si el modelo no
+/// está disponible o la generación falla; quien lo llama decide el
+/// catálogo de respaldo.
+abstract interface class GeneradorContenidoIA {
+  Future<String?> generar({
+    required String instruccionSistema,
+    required String peticion,
+  });
 }

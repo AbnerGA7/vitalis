@@ -24,6 +24,7 @@ class AlmacenPrefs implements Almacen {
   static const _claveAgua = 'vitalis.agua';
   static const _claveSesiones = 'vitalis.sesiones';
   static const _claveUrlModeloIA = 'vitalis.urlModeloIA';
+  static const _claveRutinaIA = 'vitalis.rutinaIA';
 
   final SharedPreferences _prefs;
 
@@ -147,6 +148,21 @@ class AlmacenPrefs implements Almacen {
   }
 
   @override
+  Future<Rutina?> leerRutinaIA(DateTime dia) async {
+    final mapa = _leerMapa(_claveRutinaIA);
+    if (mapa == null || mapa['fecha'] != claveDia(dia)) return null;
+    return Rutina.desdeJson((mapa['rutina'] as Map).cast<String, Object?>());
+  }
+
+  @override
+  Future<void> guardarRutinaIA(DateTime dia, Rutina rutina) async {
+    await _prefs.setString(
+      _claveRutinaIA,
+      jsonEncode({'fecha': claveDia(dia), 'rutina': rutina.aJson()}),
+    );
+  }
+
+  @override
   Future<String> exportar() async {
     final volcado = <String, Object?>{
       'aplicacion': 'Vitalis',
@@ -170,6 +186,7 @@ class AlmacenPrefs implements Almacen {
       _claveAgua,
       _claveSesiones,
       _claveUrlModeloIA,
+      _claveRutinaIA,
     ]) {
       await _prefs.remove(clave);
     }

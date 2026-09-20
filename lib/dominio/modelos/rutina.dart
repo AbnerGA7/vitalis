@@ -22,6 +22,22 @@ class Paso {
   final String indicacion;
 
   bool get esTrabajo => tipo == TipoPaso.trabajo;
+
+  Map<String, Object?> aJson() => {
+        'tipo': tipo.name,
+        'nombre': nombre,
+        'detalle': detalle,
+        'duracionS': duracionS,
+        'indicacion': indicacion,
+      };
+
+  static Paso desdeJson(Map<String, Object?> json) => Paso(
+        tipo: TipoPaso.values.byName(json['tipo'] as String),
+        nombre: json['nombre'] as String,
+        detalle: json['detalle'] as String,
+        duracionS: json['duracionS'] as int,
+        indicacion: json['indicacion'] as String,
+      );
 }
 
 /// Una rutina completa con su «por qué» (RF-41).
@@ -58,6 +74,30 @@ class Rutina {
   String get textoAccesible =>
       '$nombre. $duracionMin minutos, $numeroEjercicios ejercicios. '
       'Material: $material. Impacto $impacto. $porque';
+
+  Map<String, Object?> aJson() => {
+        'id': id,
+        'nombre': nombre,
+        'duracionMin': duracionMin,
+        'material': material,
+        'impacto': impacto,
+        'porque': porque,
+        'notaAdaptacion': notaAdaptacion,
+        'pasos': pasos.map((p) => p.aJson()).toList(),
+      };
+
+  static Rutina desdeJson(Map<String, Object?> json) => Rutina(
+        id: json['id'] as String,
+        nombre: json['nombre'] as String,
+        duracionMin: json['duracionMin'] as int,
+        material: json['material'] as String,
+        impacto: json['impacto'] as String,
+        porque: json['porque'] as String,
+        notaAdaptacion: json['notaAdaptacion'] as String,
+        pasos: (json['pasos'] as List<Object?>)
+            .map((p) => Paso.desdeJson((p as Map).cast<String, Object?>()))
+            .toList(),
+      );
 }
 
 /// Sesión registrada; alimenta el resumen semanal (RF-42).
