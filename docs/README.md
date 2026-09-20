@@ -18,6 +18,7 @@ Vitalis es una app móvil de fitness en casa, **privada** y **accesible por dise
 | 08 | [Decisiones pendientes](08-decisiones-pendientes.md) | Arquitectura agnóstica, opciones tecnológicas, ADRs por abrir |
 | 09 | [Calidad, pruebas y roadmap](09-calidad-roadmap.md) | Estrategia de pruebas, definición de hecho, fases, riesgos |
 | 10 | [Glosario](10-glosario.md) | Términos del dominio |
+| 11 | [Decisiones tomadas](11-decisiones-tomadas.md) | ADR cerrados en la implementación en Flutter y supuestos que siguen abiertos |
 
 ## Cómo usar estos documentos
 

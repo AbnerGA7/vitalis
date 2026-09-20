@@ -1,0 +1,41 @@
+name: vitalis
+description: "Vitalis — app móvil de fitness en casa, privada y accesible por diseño."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+  # Estado: una sola fuente de verdad (sección 8 — Estado de aplicación)
+  flutter_riverpod: ^2.6.1
+
+  # Servicios de dispositivo, siempre detrás de contratos (sección 8)
+  shared_preferences: ^2.3.3   # ADR-05 · almacén local
+  path_provider: ^2.1.5        # ADR-08 · exportación a archivo
+  speech_to_text: ^7.0.0       # ADR-04 · dictado del servicio del sistema
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  fake_async: ^1.3.3
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/fuentes/OFL.txt
+
+  # Inter va empaquetada: descargarla en tiempo de ejecucion rompería el
+  # requisito de funcionar sin red (RNF-01, RNF-09).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fuentes/Inter-Variable.ttf
