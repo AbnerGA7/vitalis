@@ -10,12 +10,22 @@ import 'package:flutter_gemma/flutter_gemma.dart';
 
 import '../contratos/contratos.dart';
 
-/// Tope de espera para una respuesta del modelo. Sin esto, una generación
-/// que se cuelga en el motor nativo (pasa en algunos teléfonos con ciertos
-/// mensajes) deja el chat esperando para siempre y sin avisar a nadie: con
-/// el tope, se lanza una excepción y MotorIAHibrido cae a la respuesta por
-/// reglas, que siempre contesta algo.
-const Duration _tiempoMaximoRespuesta = Duration(seconds: 25);
+/// Silencio máximo entre tokens antes de dar la generación por colgada.
+///
+/// El motor MediaPipe (.task) no aplica ningún tope de tokens de salida a
+/// nivel de sesión — lo ignora con un aviso en el log, es una limitación
+/// documentada del propio plugin — así que un `maxOutputTokens` fijo en
+/// `createChat` no sirve de nada aquí. Detectar el atasco por *silencio
+/// entre tokens* (en vez de un único plazo para toda la respuesta) además
+/// reacciona antes: si el modelo sigue produciendo texto, cada hueco es
+/// pequeño; si se cuelga a media generación, este plazo salta enseguida en
+/// vez de esperar a que se cumpla un plazo fijo pensado para el peor caso.
+const Duration _silencioMaximoEntreTokens = Duration(seconds: 12);
+
+/// Tope de caracteres de una respuesta, para lo mismo que el `maxOutputTokens`
+/// que el motor ignora: sin él, una respuesta que no colgó pero tampoco para
+/// de generar (o que ignora la instrucción de ser breve) no tendría límite.
+const int _longitudMaximaRespuesta = 480;
 
 class ConversadorGemma implements ConversadorIA {
   InferenceModel? _modelo;
@@ -30,10 +40,6 @@ class ConversadorGemma implements ConversadorIA {
     _modelo = await FlutterGemma.getActiveModel(maxTokens: 512);
     _chat = await _modelo!.createChat(
       systemInstruction: instruccionSistema,
-      // Respuestas más cortas generan antes: el prompt ya pide frases muy
-      // cortas, así que este margen no recorta el contenido, solo la
-      // latencia del chat de voz.
-      maxOutputTokens: 96,
       temperature: 0.7,
     );
   }
@@ -45,13 +51,30 @@ class ConversadorGemma implements ConversadorIA {
       throw StateError('Llama a reiniciar() antes de responder().');
     }
     await chat.addQuery(Message.text(text: texto, isUser: true));
-    final respuesta =
-        await chat.generateChatResponse().timeout(_tiempoMaximoRespuesta);
-    return switch (respuesta) {
-      TextResponse(:final token) => token.trim().isEmpty
-          ? 'No se me ocurre nada que añadir a eso.'
-          : token.trim(),
-      _ => 'No he sabido responder a eso. ¿Lo intentamos de otra forma?',
-    };
+
+    final buffer = StringBuffer();
+    try {
+      await for (final fragmento in chat
+          .generateChatResponseAsync()
+          .timeout(_silencioMaximoEntreTokens)) {
+        if (fragmento is TextResponse) {
+          buffer.write(fragmento.token);
+          // Al cortar aquí, el `break` cancela la suscripción al stream y con
+          // ella la generación en curso: no sigue trabajando en segundo plano
+          // por una respuesta que ya no se va a usar entera.
+          if (buffer.length >= _longitudMaximaRespuesta) break;
+        }
+      }
+    } on TimeoutException {
+      // Si ya hay algo de texto, una respuesta a medias es mejor que
+      // ninguna. Si el atasco fue desde el primer token, no hay nada que
+      // devolver: se relanza para que MotorIAHibrido caiga a las reglas.
+      if (buffer.isEmpty) rethrow;
+    }
+
+    final respuesta = buffer.toString().trim();
+    return respuesta.isEmpty
+        ? 'No se me ocurre nada que añadir a eso.'
+        : respuesta;
   }
 }
