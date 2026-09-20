@@ -16,8 +16,6 @@ import '../contratos/contratos.dart';
 class VozSistema implements Voz {
   VozSistema({SpeechToText? motor}) : _motor = motor ?? SpeechToText();
 
-  static const String _localeEspanol = 'es_ES';
-
   /// Silencio tras el que se da por cerrado el turno, tanto para el propio
   /// `pauseFor` del reconocedor como para el temporizador de respaldo.
   static const Duration _pausaFinal = Duration(seconds: 3);
@@ -25,6 +23,12 @@ class VozSistema implements Voz {
   final SpeechToText _motor;
   bool _iniciado = false;
   Timer? _temporizadorCierre;
+
+  /// Locale español elegido de entre los que el propio dispositivo tiene
+  /// instalados para reconocimiento en el dispositivo. `null` si no hay
+  /// ninguno: en ese caso se deja que el reconocedor use su locale de
+  /// sistema por defecto en vez de forzar uno.
+  String? _localeElegido;
 
   @override
   bool get escuchando => _motor.isListening;
@@ -37,10 +41,34 @@ class VozSistema implements Voz {
         onError: (_) {},
         onStatus: (_) {},
       );
+      if (_iniciado) _localeElegido = await _elegirLocale();
     } on Exception {
       _iniciado = false;
     }
     return _iniciado;
+  }
+
+  /// Pedir un locale que el teléfono no tiene descargado (p. ej. forzar
+  /// «es_ES» en un equipo que solo trae «es-US») hace que el reconocedor
+  /// falle con `LANGUAGE_PACK_ERROR` sin dictar una sola palabra. En vez de
+  /// forzar uno fijo, se elige entre los que el propio dispositivo reporta
+  /// como disponibles: preferentemente español de Perú, si no cualquier
+  /// español, y si no hay ninguno, se deja que decida el sistema.
+  Future<String?> _elegirLocale() async {
+    List<LocaleName> disponibles;
+    try {
+      disponibles = await _motor.locales();
+    } on Exception {
+      return null;
+    }
+    LocaleName? algunEspanol;
+    for (final locale in disponibles) {
+      final id = locale.localeId.toLowerCase();
+      if (!id.startsWith('es')) continue;
+      if (id.contains('pe')) return locale.localeId;
+      algunEspanol ??= locale;
+    }
+    return algunEspanol?.localeId;
   }
 
   @override
@@ -73,7 +101,7 @@ class VozSistema implements Voz {
           onDevice: true,
           partialResults: true,
           listenMode: ListenMode.dictation,
-          localeId: _localeEspanol,
+          localeId: _localeElegido,
           // Un error transitorio (p. ej. un instante sin habla detectada) no
           // debe abortar el turno entero: se deja que `pauseFor`, o el
           // temporizador de respaldo de abajo, lo cierren con normalidad en
