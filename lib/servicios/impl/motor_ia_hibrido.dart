@@ -7,7 +7,12 @@
 /// se apoya en el modelo real, y solo si hay uno cargado.
 library;
 
+import 'dart:convert';
+
+import '../../dominio/catalogo/platos.dart';
 import '../../dominio/logica/clasificador_intenciones.dart';
+import '../../dominio/logica/generador_plan.dart';
+import '../../dominio/logica/proteina.dart';
 import '../../dominio/modelos/enums.dart';
 import '../../dominio/modelos/mensaje.dart';
 import '../../dominio/modelos/plan_comidas.dart';
@@ -78,11 +83,85 @@ bool _tieneTonoInapropiado(String texto) {
   return _terminosDespectivosCuerpo.any(normalizado.contains);
 }
 
+/// Instrucción de sistema para generar recetas, separada de la del asistente
+/// conversacional: es un rol distinto (redactor de recetas, no un chat) con
+/// su propio chat efímero (sección 5, [GeneradorContenidoIA]).
+String _instruccionGeneradorRecetas() =>
+    'Eres un generador de recetas para una app peruana de fitness en casa. '
+    'Devuelves solo JSON válido, sin explicaciones ni texto alrededor ni '
+    'bloques de código. Usa vocabulario y platos peruanos (papa, camote, '
+    'choclo, palta, ají, menestras, quinua...), nunca términos de España '
+    '(nada de "judías", "patata", "boniato" ni "aguacate"). No incluyas '
+    'cantidades ni gramos: de eso ya se encarga la app.';
+
+String _peticionRecetas(PreferenciaDieta preferencia) =>
+    'Propón 4 platos peruanos, uno para cada una de estas franjas en este '
+    'orden: ${nombresFranjas.join(', ')}. La dieta es '
+    '"${preferencia.etiqueta}". Responde solo con este JSON, una lista de '
+    'exactamente 4 objetos: '
+    '[{"nombre": "...", "ingredientes": ["...", "..."]}, ...]';
+
+/// Recorta cualquier texto que el modelo añada antes o después del JSON
+/// (preámbulo, bloque de código...), quedándose con lo que hay entre el
+/// primer `[` y el último `]`.
+String _extraerJson(String texto) {
+  final inicio = texto.indexOf('[');
+  final fin = texto.lastIndexOf(']');
+  if (inicio == -1 || fin == -1 || fin < inicio) return texto;
+  return texto.substring(inicio, fin + 1);
+}
+
+/// Valida y convierte la respuesta cruda del generador en 4 platos. Cualquier
+/// cosa que no encaje (JSON inválido, longitud distinta de 4, campos vacíos o
+/// del tipo equivocado) devuelve `null`: quien llama cae al catálogo.
+List<PlatoBase>? _parsearPlatosGenerados(String? crudo) {
+  if (crudo == null) return null;
+  try {
+    final decodificado = jsonDecode(_extraerJson(crudo));
+    if (decodificado is! List || decodificado.length != 4) return null;
+    final platos = <PlatoBase>[];
+    for (final item in decodificado) {
+      if (item is! Map) return null;
+      final nombre = item['nombre'];
+      final ingredientes = item['ingredientes'];
+      if (nombre is! String || nombre.trim().isEmpty) return null;
+      if (ingredientes is! List || ingredientes.isEmpty) return null;
+      platos.add(
+        PlatoBase(nombre.trim(), ingredientes.map((e) => '$e').toList()),
+      );
+    }
+    return platos;
+  } on FormatException {
+    return null;
+  }
+}
+
+/// «Por qué este plan» cuando los platos los ha propuesto la IA, en vez del
+/// catálogo (sección 4.3, RF-23).
+String _explicarPlanIA({
+  required double pesoKg,
+  required TasaProteina tasa,
+  required PreferenciaDieta preferencia,
+  required int objetivoG,
+}) {
+  final peso = pesoKg.toStringAsFixed(1).replaceAll('.', ',');
+  final gkg = tasa.gPorKg.toStringAsFixed(1).replaceAll('.', ',');
+  return 'Parto de tus $peso kg y de la tasa «${tasa.etiqueta}» '
+      '($gkg g/kg), así que el día suma $objetivoG g de proteína. '
+      'Reparto el 30 % en el desayuno, el 35 % en la comida, el 20 % en la '
+      'merienda y el 15 % en la cena, para que ninguna toma se quede corta. '
+      'Los platos los ha propuesto la IA local para la preferencia '
+      '«${preferencia.etiqueta}»: la preferencia cambia qué comes, nunca '
+      'cuánta proteína necesitas. Es una orientación, no una pauta médica.';
+}
+
 class MotorIAHibrido implements MotorIA {
   MotorIAHibrido({
     required this.base,
     required this.gestor,
     required this.conversador,
+    required this.generador,
+    required this.reloj,
     required this.obtenerContexto,
   });
 
@@ -91,6 +170,13 @@ class MotorIAHibrido implements MotorIA {
 
   final GestorModeloIA gestor;
   final ConversadorIA conversador;
+
+  /// Genera los platos del plan cuando hay modelo disponible; nunca decide
+  /// gramos de proteína ni kilocalorías (ADR-03, RF-25), solo el nombre y los
+  /// ingredientes de cada plato.
+  final GeneradorContenidoIA generador;
+
+  final Reloj reloj;
   final ContextoAsistente Function() obtenerContexto;
 
   bool _conversacionIniciada = false;
@@ -107,13 +193,52 @@ class MotorIAHibrido implements MotorIA {
     required TasaProteina tasa,
     required PreferenciaDieta preferencia,
     int semilla = 0,
-  }) =>
-      base.generarPlan(
+  }) async {
+    final platosIA = conversacionDisponible
+        ? _parsearPlatosGenerados(
+            await generador.generar(
+              instruccionSistema: _instruccionGeneradorRecetas(),
+              peticion: _peticionRecetas(preferencia),
+            ),
+          )
+        : null;
+
+    if (platosIA == null) {
+      return base.generarPlan(
         pesoKg: pesoKg,
         tasa: tasa,
         preferencia: preferencia,
         semilla: semilla,
       );
+    }
+
+    final objetivo = proteinaObjetivoG(pesoKg: pesoKg, tasa: tasa);
+    final comidas = <Comida>[
+      for (var i = 0; i < repartoProteina.length; i++)
+        Comida(
+          hora: horasComidas[i],
+          plato: platosIA[i].nombre,
+          ingredientes: platosIA[i].ingredientes,
+          proteinaG: (objetivo * repartoProteina[i]).round(),
+          kcal: kcalDesdeProteina((objetivo * repartoProteina[i]).round()),
+        ),
+    ];
+
+    final hoy = reloj.ahora();
+    return PlanComidas(
+      fecha: DateTime(hoy.year, hoy.month, hoy.day),
+      objetivoProteinaG: objetivo,
+      tasa: tasa,
+      preferencia: preferencia,
+      comidas: comidas,
+      porque: _explicarPlanIA(
+        pesoKg: pesoKg,
+        tasa: tasa,
+        preferencia: preferencia,
+        objetivoG: objetivo,
+      ),
+    );
+  }
 
   @override
   Future<RespuestaAsistente> responder(

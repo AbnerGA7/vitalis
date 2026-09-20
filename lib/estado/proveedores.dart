@@ -10,6 +10,7 @@ import '../dominio/catalogo/rutinas.dart';
 import '../servicios/contratos/contratos.dart';
 import '../servicios/impl/conversador_gemma.dart';
 import '../servicios/impl/dispositivo.dart';
+import '../servicios/impl/generador_contenido_gemma.dart';
 import '../servicios/impl/motor_ia_hibrido.dart';
 import '../servicios/impl/motor_ia_local.dart';
 import '../servicios/impl/sintesis_voz_sistema.dart';
@@ -75,6 +76,11 @@ final gestorModeloIAProvider = Provider<GestorModeloIA>((ref) {
 final conversadorIAProvider =
     Provider<ConversadorIA>((ref) => ConversadorGemma());
 
+/// Generación de contenido de una sola vuelta (recetas, ejercicios...),
+/// detrás de su propio contrato para poder simularla en pruebas.
+final generadorContenidoIAProvider =
+    Provider<GeneradorContenidoIA>((ref) => GeneradorContenidoGemma());
+
 /// Motor por reglas: siempre resuelve lo estructurado (plan/agua/entreno),
 /// con o sin modelo de lenguaje real cargado.
 final _motorReglasProvider = Provider<MotorIA>((ref) {
@@ -93,6 +99,8 @@ final motorIaProvider = Provider<MotorIA>((ref) {
     base: ref.watch(_motorReglasProvider),
     gestor: ref.watch(gestorModeloIAProvider),
     conversador: ref.watch(conversadorIAProvider),
+    generador: ref.watch(generadorContenidoIAProvider),
+    reloj: ref.watch(relojProvider),
     obtenerContexto: () => _contextoDesdeEstado(ref),
   );
 });

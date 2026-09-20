@@ -20,16 +20,22 @@ void main() {
   late MotorIALocal reglas;
   late GestorModeloIAFalso gestor;
   late ConversadorIAFalso conversador;
+  late GeneradorContenidoIAFalso generador;
+  late RelojFalso reloj;
   late MotorIAHibrido hibrido;
 
   setUp(() {
     reglas = MotorIALocal(obtenerContexto: _contexto);
     gestor = GestorModeloIAFalso();
     conversador = ConversadorIAFalso();
+    generador = GeneradorContenidoIAFalso();
+    reloj = RelojFalso(DateTime(2026, 9, 19, 9));
     hibrido = MotorIAHibrido(
       base: reglas,
       gestor: gestor,
       conversador: conversador,
+      generador: generador,
+      reloj: reloj,
       obtenerContexto: _contexto,
     );
   });
@@ -60,6 +66,47 @@ void main() {
     );
     expect(plan.objetivoProteinaG, 112);
     expect(conversador.mensajesRecibidos, isEmpty);
+  });
+
+  test(
+      'generarPlan usa los platos que propone la IA, pero la proteína sigue '
+      'saliendo de la fórmula', () async {
+    gestor.estado = EstadoModeloIA.listo;
+    generador.respuesta = '''
+      [
+        {"nombre": "Tamal de pollo", "ingredientes": ["choclo", "pollo"]},
+        {"nombre": "Lomo saltado", "ingredientes": ["lomo", "arroz"]},
+        {"nombre": "Choclo con queso", "ingredientes": ["choclo", "queso"]},
+        {"nombre": "Aguadito de pollo", "ingredientes": ["pollo", "arroz"]}
+      ]
+    ''';
+
+    final plan = await hibrido.generarPlan(
+      pesoKg: 70,
+      tasa: TasaProteina.fuerza,
+      preferencia: PreferenciaDieta.mixta,
+    );
+
+    expect(plan.objetivoProteinaG, 112);
+    expect(plan.comidas, hasLength(4));
+    expect(plan.comidas[0].plato, 'Tamal de pollo');
+    expect(plan.comidas[1].plato, 'Lomo saltado');
+    expect(plan.comidas.map((c) => c.proteinaG).reduce((a, b) => a + b),
+        closeTo(112, 1));
+  });
+
+  test('si la IA devuelve algo inválido, generarPlan cae al catálogo', () async {
+    gestor.estado = EstadoModeloIA.listo;
+    generador.respuesta = 'esto no es JSON';
+
+    final plan = await hibrido.generarPlan(
+      pesoKg: 70,
+      tasa: TasaProteina.fuerza,
+      preferencia: PreferenciaDieta.mixta,
+    );
+
+    expect(plan.objetivoProteinaG, 112);
+    expect(plan.comidas, hasLength(4));
   });
 
   test('sin modelo, lo no reconocido cae en el «no entendido» de reglas', () async {

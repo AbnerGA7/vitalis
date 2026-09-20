@@ -53,6 +53,8 @@ class Entorno {
   final AnunciadorEspia anunciador = AnunciadorEspia();
   final GestorModeloIAFalso gestorModeloIA;
   final ConversadorIAFalso conversadorIA = ConversadorIAFalso();
+  final GeneradorContenidoIAFalso generadorContenidoIA =
+      GeneradorContenidoIAFalso();
   final SintesisVozEspia sintesisVoz = SintesisVozEspia();
   late final EstadoApp estadoInicial;
 
@@ -65,6 +67,7 @@ class Entorno {
         vozProvider.overrideWithValue(voz),
         gestorModeloIAProvider.overrideWithValue(gestorModeloIA),
         conversadorIAProvider.overrideWithValue(conversadorIA),
+        generadorContenidoIAProvider.overrideWithValue(generadorContenidoIA),
         sintesisVozProvider.overrideWithValue(sintesisVoz),
       ];
 
