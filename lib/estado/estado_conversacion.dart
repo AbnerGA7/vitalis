@@ -24,6 +24,7 @@ class EstadoConversacion {
     this.pasoPensando = '',
     this.errorVoz,
     this.vozDisponible = false,
+    this.modoVozContinua = false,
   });
 
   final List<Mensaje> mensajes;
@@ -39,6 +40,12 @@ class EstadoConversacion {
   final String? errorVoz;
   final bool vozDisponible;
 
+  /// Chat de voz manos-libres: tras hablar la respuesta, se reabre el
+  /// dictado solo, sin que la persona tenga que volver a tocar el micro.
+  /// Se activa al tocar el micro y se apaga al tocarlo de nuevo mientras
+  /// escucha, o al escribir (RF-10, RF-11).
+  final bool modoVozContinua;
+
   bool get vacia => mensajes.isEmpty;
 
   bool get escuchando => fase == FaseAsistente.escuchando;
@@ -51,6 +58,7 @@ class EstadoConversacion {
     String? errorVoz,
     bool limpiarError = false,
     bool? vozDisponible,
+    bool? modoVozContinua,
   }) =>
       EstadoConversacion(
         mensajes: mensajes ?? this.mensajes,
@@ -59,6 +67,7 @@ class EstadoConversacion {
         pasoPensando: pasoPensando ?? this.pasoPensando,
         errorVoz: limpiarError ? null : (errorVoz ?? this.errorVoz),
         vozDisponible: vozDisponible ?? this.vozDisponible,
+        modoVozContinua: modoVozContinua ?? this.modoVozContinua,
       );
 }
 
@@ -88,6 +97,14 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
   Anunciador get _anunciador => ref.read(anunciadorProvider);
 
   void escribir(String texto) {
+    // Escribir a mano gana sobre el chat de voz manos-libres: si la persona
+    // prefiere teclear, se corta el dictado y no se reabre solo después. Se
+    // apaga el modo ya mismo (no tras el `await` de detenerDictado) para que
+    // el estado quede consistente en el mismo tick que la persona escribió.
+    if (state.escuchando || state.modoVozContinua) {
+      state = state.copiarCon(modoVozContinua: false);
+      unawaited(detenerDictado());
+    }
     state = state.copiarCon(borrador: texto, limpiarError: true);
   }
 
@@ -137,8 +154,10 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
     );
     _anunciador.anunciar(respuesta.texto, prioridad: PrioridadAnuncio.cortes);
     // El chat de voz no espera a que termine de hablar para seguir usable:
-    // la voz es un añadido, el texto ya está en pantalla.
-    unawaited(_hablar(respuesta.texto));
+    // la voz es un añadido, el texto ya está en pantalla. Si el turno vino
+    // por voz y el modo manos-libres sigue activo, en cuanto termine de
+    // hablar se reabre el dictado solo (ver _hablarYSeguirEscuchando).
+    unawaited(_hablarYSeguirEscuchando(respuesta.texto, porVoz: porVoz));
   }
 
   Future<void> _hablar(String texto) async {
@@ -150,16 +169,33 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
     }
   }
 
+  /// Manos-libres (RF-10, RF-11): un turno por voz reabre el dictado solo al
+  /// terminar de hablar, sin que la persona tenga que volver a tocar el
+  /// micro para seguir la conversación. Se corta si mientras tanto se
+  /// desactivó el modo (p. ej. porque la persona se puso a escribir).
+  Future<void> _hablarYSeguirEscuchando(
+    String texto, {
+    required bool porVoz,
+  }) async {
+    await _hablar(texto);
+    if (!_vivo || !porVoz || !state.modoVozContinua) return;
+    await iniciarDictado();
+  }
+
   /// Arranca el dictado. La transcripción en vivo sirve de subtítulo (RF-11).
   Future<void> iniciarDictado() async {
     if (state.escuchando) {
-      await detenerDictado();
+      await detenerDictado(porUsuario: true);
       return;
     }
     // Vibración al abrir y cerrar el dictado (AC-08).
     await ref.read(hapticoProvider).confirmacion();
 
-    state = state.copiarCon(fase: FaseAsistente.escuchando, limpiarError: true);
+    state = state.copiarCon(
+      fase: FaseAsistente.escuchando,
+      modoVozContinua: true,
+      limpiarError: true,
+    );
     _anunciador.anunciar('Escuchando', prioridad: PrioridadAnuncio.cortes);
 
     await _voz.escuchar(
@@ -189,12 +225,20 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
     );
   }
 
-  Future<void> detenerDictado() async {
-    if (!state.escuchando) return;
-    await ref.read(hapticoProvider).confirmacion();
-    await _voz.detener();
-    if (!_vivo) return;
-    state = state.copiarCon(fase: FaseAsistente.reposo);
+  /// [porUsuario] apaga también el modo de voz continua (RF-10, RF-11): es
+  /// lo que distingue a la persona parando el dictado a propósito (o
+  /// poniéndose a escribir) del corte interno que hace `enviar()` antes de
+  /// mandar cada turno, que no debe cancelar el manos-libres.
+  Future<void> detenerDictado({bool porUsuario = false}) async {
+    if (state.escuchando) {
+      await ref.read(hapticoProvider).confirmacion();
+      await _voz.detener();
+      if (!_vivo) return;
+      state = state.copiarCon(fase: FaseAsistente.reposo);
+    }
+    if (porUsuario && state.modoVozContinua) {
+      state = state.copiarCon(modoVozContinua: false);
+    }
   }
 
   /// La conversación arranca vacía cada día (RF-16).

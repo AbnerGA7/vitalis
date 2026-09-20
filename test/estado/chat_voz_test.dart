@@ -52,6 +52,44 @@ void main() {
     expect(entorno.sintesisVoz.dicho.first, contains('mililitros'));
   });
 
+  test(
+      'el modo manos-libres reabre el dictado solo tras cada respuesta, sin '
+      'volver a tocar el micro', () async {
+    final entorno = Entorno();
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(conversacionProvider.notifier);
+
+    await notificador.iniciarDictado();
+    entorno.voz.transcribir('apunta un vaso de agua', definitiva: true);
+    await _esperarRespuesta();
+
+    // Sin tocar el micro otra vez, ya debería estar escuchando de nuevo.
+    expect(contenedor.read(conversacionProvider).escuchando, isTrue);
+    expect(entorno.voz.escuchando, isTrue);
+
+    // Un segundo turno por voz, otra vez sin tocar nada.
+    entorno.voz.transcribir('¿qué entreno toca hoy?', definitiva: true);
+    await _esperarRespuesta();
+
+    final mensajes = contenedor.read(conversacionProvider).mensajes;
+    expect(mensajes.where((m) => m.autor.name == 'persona'), hasLength(2));
+  });
+
+  test('escribir a mano apaga el modo manos-libres', () async {
+    final entorno = Entorno();
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(conversacionProvider.notifier);
+
+    await notificador.iniciarDictado();
+    entorno.voz.transcribir('apunta un vaso de agua', definitiva: true);
+    await _esperarRespuesta();
+    expect(contenedor.read(conversacionProvider).modoVozContinua, isTrue);
+
+    notificador.escribir('esto lo escribo yo');
+
+    expect(contenedor.read(conversacionProvider).modoVozContinua, isFalse);
+  });
+
   test('vaciar la conversación también reinicia la memoria del modelo real',
       () async {
     final entorno = Entorno(estadoModeloIA: EstadoModeloIA.listo);
