@@ -50,9 +50,16 @@ class VozSistema implements Voz {
     return _iniciado;
   }
 
+  /// Un solo disparo: se limpia justo antes de llamarlo, para que un error
+  /// tardío del motor nativo (puede llegar después de que el turno ya
+  /// terminara bien, es una condición de carrera real del propio
+  /// reconocedor) no reactive el `alFallar` de un turno que ya se cerró sin
+  /// problema.
   void _alFallarDelMotor(SpeechRecognitionError error) {
     _temporizadorCierre?.cancel();
-    _alFallarActual?.call(StateError(error.errorMsg));
+    final alFallar = _alFallarActual;
+    _alFallarActual = null;
+    alFallar?.call(StateError(error.errorMsg));
   }
 
   @override
@@ -62,6 +69,7 @@ class VozSistema implements Voz {
   }) async {
     _alFallarActual = alFallar;
     if (!await disponible()) {
+      _alFallarActual = null;
       alFallar(
         StateError('Este dispositivo no ofrece dictado sin conexión.'),
       );
@@ -76,6 +84,9 @@ class VozSistema implements Voz {
           );
           if (transcripcion.definitiva) {
             _temporizadorCierre?.cancel();
+            // Turno cerrado con resultado: ya no hace falta reenviar un
+            // error tardío de este motor a este `alFallar`.
+            _alFallarActual = null;
           } else {
             _reprogramarCierreDeRespaldo(transcripcion, alTranscribir);
           }
@@ -97,6 +108,7 @@ class VozSistema implements Voz {
         ),
       );
     } on Exception catch (error) {
+      _alFallarActual = null;
       alFallar(error);
     }
   }
@@ -115,6 +127,7 @@ class VozSistema implements Voz {
     _temporizadorCierre = Timer(_pausaFinal, () async {
       if (!_motor.isListening) return;
       await _motor.stop();
+      _alFallarActual = null;
       alTranscribir(Transcripcion(texto: parcial.texto, definitiva: true));
     });
   }
@@ -122,6 +135,7 @@ class VozSistema implements Voz {
   @override
   Future<void> detener() async {
     _temporizadorCierre?.cancel();
+    _alFallarActual = null;
     if (_motor.isListening) await _motor.stop();
   }
 }
