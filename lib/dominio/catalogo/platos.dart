@@ -1,4 +1,4 @@
-/// Catálogo de platos por preferencia dietética.
+/// Catálogo de platos por preferencia dietética, en clave peruana.
 ///
 /// La preferencia solo cambia este catálogo, nunca el objetivo de proteína
 /// (RF-21, sección 4.3). Cada franja tiene varias opciones para que
@@ -24,112 +24,144 @@ const List<String> nombresFranjas = ['Desayuno', 'Comida', 'Merienda', 'Cena'];
 const Map<PreferenciaDieta, List<List<PlatoBase>>> catalogoPlatos = {
   PreferenciaDieta.mixta: [
     [
-      PlatoBase('Tortilla con avena', ['huevo', 'clara', 'avena', 'plátano']),
-      PlatoBase('Requesón con fruta', ['requesón', 'arándanos', 'nueces']),
-      PlatoBase('Revuelto de pavo', ['pavo', 'huevo', 'pan integral']),
+      PlatoBase('Tamal de pollo', ['choclo', 'pollo', 'huevo']),
+      PlatoBase('Pan con palta y huevo', ['pan integral', 'palta', 'huevo']),
+      PlatoBase('Quinua con leche y plátano', [
+        'quinua',
+        'leche',
+        'plátano',
+      ]),
     ],
     [
-      PlatoBase('Pollo con arroz y judías', ['pollo', 'arroz', 'judías verdes']),
-      PlatoBase('Ternera con quinoa', ['ternera magra', 'quinoa', 'pimiento']),
-      PlatoBase('Lentejas con bacalao', ['lentejas', 'bacalao', 'zanahoria']),
+      PlatoBase('Lomo saltado ligero con arroz', [
+        'lomo de res',
+        'arroz',
+        'tomate',
+      ]),
+      PlatoBase('Pollo a la plancha con camote', [
+        'pollo',
+        'camote',
+        'brócoli',
+      ]),
+      PlatoBase('Pescado sudado con yuca', ['pescado', 'yuca', 'cebolla']),
     ],
     [
-      PlatoBase('Yogur griego con nueces', ['yogur griego', 'nueces', 'miel']),
-      PlatoBase('Tostada de atún', ['atún', 'pan integral', 'tomate']),
-      PlatoBase('Batido de leche y avena', ['leche', 'avena', 'cacao']),
+      PlatoBase('Yogur con quinua pop y fruta', [
+        'yogur',
+        'quinua pop',
+        'fruta',
+      ]),
+      PlatoBase('Tostada de atún y palta', ['atún', 'palta', 'pan integral']),
+      PlatoBase('Choclo con queso fresco', ['choclo', 'queso fresco']),
     ],
     [
-      PlatoBase('Merluza con patata', ['merluza', 'patata', 'brócoli']),
-      PlatoBase('Salmón al horno', ['salmón', 'calabacín', 'aceite de oliva']),
-      PlatoBase('Tortilla de espinacas', ['huevo', 'espinacas', 'queso fresco']),
+      PlatoBase('Aguadito de pollo', ['pollo', 'arroz', 'culantro']),
+      PlatoBase('Tortilla de verduras con camote', [
+        'huevo',
+        'verduras',
+        'camote',
+      ]),
+      PlatoBase('Pescado al horno con ensalada', [
+        'pescado',
+        'lechuga',
+        'tomate',
+      ]),
     ],
   ],
   PreferenciaDieta.vegetariana: [
     [
-      PlatoBase('Avena con yogur y semillas', [
-        'avena',
-        'yogur',
-        'semillas de chía',
-      ]),
-      PlatoBase('Tostada de hummus y huevo', [
-        'hummus',
-        'huevo',
-        'pan integral',
-      ]),
-      PlatoBase('Batido de plátano y soja', [
-        'bebida de soja',
+      PlatoBase('Quinua con leche y plátano', [
+        'quinua',
+        'leche',
         'plátano',
-        'almendra',
       ]),
-    ],
-    [
-      PlatoBase('Garbanzos con espinacas', [
-        'garbanzos',
-        'espinacas',
-        'comino',
-      ]),
-      PlatoBase('Tofu salteado con arroz', [
-        'tofu',
-        'arroz integral',
-        'brócoli',
-      ]),
-      PlatoBase('Lentejas con verduras', ['lentejas', 'zanahoria', 'puerro']),
-    ],
-    [
-      PlatoBase('Queso fresco con nueces', [
+      PlatoBase('Pan con palta y queso', [
+        'pan integral',
+        'palta',
         'queso fresco',
-        'nueces',
-        'manzana',
       ]),
-      PlatoBase('Yogur con granola', ['yogur', 'granola', 'frutos rojos']),
-      PlatoBase('Edamame con sésamo', ['edamame', 'sésamo', 'lima']),
+      PlatoBase('Avena con maca y fruta', ['avena', 'maca', 'fruta']),
     ],
     [
-      PlatoBase('Tortilla de patata y guisantes', [
-        'huevo',
-        'patata',
-        'guisantes',
+      PlatoBase('Tacu tacu de frejoles', ['frejoles', 'arroz', 'huevo']),
+      PlatoBase('Menestra de lentejas con arroz', [
+        'lentejas',
+        'arroz',
+        'zapallo',
       ]),
-      PlatoBase('Tempeh con verduras', ['tempeh', 'calabacín', 'pimiento']),
-      PlatoBase('Crema de calabaza con semillas', [
-        'calabaza',
-        'semillas de calabaza',
-        'queso',
+      PlatoBase('Quinua a la jardinera', [
+        'quinua',
+        'verduras',
+        'queso parmesano',
+      ]),
+    ],
+    [
+      PlatoBase('Queso fresco con choclo', ['queso fresco', 'choclo']),
+      PlatoBase('Yogur con granola andina', [
+        'yogur',
+        'granola',
+        'kiwicha',
+      ]),
+      PlatoBase('Humita dulce', ['choclo', 'leche', 'canela']),
+    ],
+    [
+      PlatoBase('Causa de verduras', ['papa amarilla', 'palta', 'verduras']),
+      PlatoBase('Tortilla de verduras con quinua', [
+        'huevo',
+        'verduras',
+        'quinua',
+      ]),
+      PlatoBase('Crema de zapallo con semillas', [
+        'zapallo',
+        'semillas de zapallo',
+        'leche',
       ]),
     ],
   ],
   PreferenciaDieta.sinLactosa: [
     [
-      PlatoBase('Tortilla con avena', ['huevo', 'clara', 'avena', 'plátano']),
-      PlatoBase('Tostada de pavo y aguacate', [
-        'pavo',
-        'aguacate',
-        'pan integral',
-      ]),
-      PlatoBase('Batido de bebida de soja', [
-        'bebida de soja',
-        'avena',
-        'fresa',
+      PlatoBase('Tamal de pollo', ['choclo', 'pollo', 'huevo']),
+      PlatoBase('Pan con palta y huevo', ['pan integral', 'palta', 'huevo']),
+      PlatoBase('Quinua con leche de almendra y fruta', [
+        'quinua',
+        'leche de almendra',
+        'fruta',
       ]),
     ],
     [
-      PlatoBase('Pollo con arroz y judías', ['pollo', 'arroz', 'judías verdes']),
-      PlatoBase('Salmón con boniato', ['salmón', 'boniato', 'espárragos']),
-      PlatoBase('Garbanzos con atún', ['garbanzos', 'atún', 'tomate']),
-    ],
-    [
-      PlatoBase('Hummus con crudités', ['hummus', 'zanahoria', 'apio']),
-      PlatoBase('Almendras con pavo', ['almendras', 'pavo', 'manzana']),
-      PlatoBase('Tostada de atún', ['atún', 'pan integral', 'tomate']),
-    ],
-    [
-      PlatoBase('Merluza con patata', ['merluza', 'patata', 'brócoli']),
-      PlatoBase('Pollo al horno con verduras', [
+      PlatoBase('Lomo saltado ligero con arroz', [
+        'lomo de res',
+        'arroz',
+        'tomate',
+      ]),
+      PlatoBase('Pollo al horno con camote', [
         'pollo',
-        'calabacín',
+        'camote',
+        'ensalada',
+      ]),
+      PlatoBase('Pescado a la plancha con yuca', [
+        'pescado',
+        'yuca',
         'cebolla',
       ]),
-      PlatoBase('Tortilla de espinacas', ['huevo', 'espinacas', 'aguacate']),
+    ],
+    [
+      PlatoBase('Tostada de atún y palta', ['atún', 'palta', 'pan integral']),
+      PlatoBase('Choclo con habas', ['choclo', 'habas']),
+      PlatoBase('Fruta con quinua pop', ['fruta', 'quinua pop']),
+    ],
+    [
+      PlatoBase('Aguadito de pollo', ['pollo', 'arroz', 'culantro']),
+      PlatoBase('Pescado al horno con ensalada', [
+        'pescado',
+        'lechuga',
+        'tomate',
+      ]),
+      PlatoBase('Tortilla de verduras con camote', [
+        'huevo',
+        'verduras',
+        'camote',
+      ]),
     ],
   ],
 };
