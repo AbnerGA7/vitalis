@@ -23,6 +23,7 @@ class AlmacenPrefs implements Almacen {
   static const _clavePlan = 'vitalis.plan';
   static const _claveAgua = 'vitalis.agua';
   static const _claveSesiones = 'vitalis.sesiones';
+  static const _claveUrlModeloIA = 'vitalis.urlModeloIA';
 
   final SharedPreferences _prefs;
 
@@ -134,6 +135,18 @@ class AlmacenPrefs implements Almacen {
   }
 
   @override
+  Future<String?> leerUrlModeloIA() async => _prefs.getString(_claveUrlModeloIA);
+
+  @override
+  Future<void> guardarUrlModeloIA(String? url) async {
+    if (url == null) {
+      await _prefs.remove(_claveUrlModeloIA);
+    } else {
+      await _prefs.setString(_claveUrlModeloIA, url);
+    }
+  }
+
+  @override
   Future<String> exportar() async {
     final volcado = <String, Object?>{
       'aplicacion': 'Vitalis',
@@ -156,6 +169,7 @@ class AlmacenPrefs implements Almacen {
       _clavePlan,
       _claveAgua,
       _claveSesiones,
+      _claveUrlModeloIA,
     ]) {
       await _prefs.remove(clave);
     }

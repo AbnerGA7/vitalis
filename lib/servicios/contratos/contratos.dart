@@ -5,6 +5,7 @@
 library;
 
 import '../../dominio/modelos/enums.dart';
+import '../../dominio/modelos/mensaje.dart';
 import '../../dominio/modelos/perfil.dart';
 import '../../dominio/modelos/plan_comidas.dart';
 import '../../dominio/modelos/rutina.dart';
@@ -34,6 +35,11 @@ abstract interface class Almacen {
 
   Future<List<SesionEntreno>> leerSesiones();
   Future<void> guardarSesion(SesionEntreno sesion);
+
+  /// URL desde la que se descargó el modelo de IA local real, si hay uno
+  /// instalado. Sirve para restaurarlo al arrancar sin volver a descargarlo.
+  Future<String?> leerUrlModeloIA();
+  Future<void> guardarUrlModeloIA(String? url);
 
   /// Volcado legible de todo lo guardado (RF-52).
   Future<String> exportar();
@@ -116,17 +122,27 @@ class RespuestaAsistente {
     required this.texto,
     this.plan,
     this.ejemplos = const [],
+    this.esConversacionLibre = false,
   });
 
   final Intencion intencion;
   final String texto;
   final PlanComidas? plan;
   final List<String> ejemplos;
+
+  /// True cuando el texto lo generó el modelo de lenguaje real, no una
+  /// plantilla fija. Distingue una respuesta conversacional (puede variar
+  /// entre llamadas) de una determinista, para que la interfaz no la trate
+  /// igual que a un «no entendido» con ejemplos fijos.
+  final bool esConversacionLibre;
 }
 
 /// Motor de IA local. Corre en el dispositivo y nunca usa la red (RNF-01).
 abstract interface class MotorIA {
   /// Genera el plan del día. Solo recibe peso, tasa y preferencia (RF-25).
+  ///
+  /// Siempre por fórmula, nunca por el modelo conversacional: la proteína y
+  /// las kcal son datos, no algo que un LLM deba inventar (sección 4.3).
   Future<PlanComidas> generarPlan({
     required double pesoKg,
     required TasaProteina tasa,
@@ -135,8 +151,88 @@ abstract interface class MotorIA {
   });
 
   /// Responde a lo que ha dicho o escrito la persona (RF-12, RF-13).
-  Future<RespuestaAsistente> responder(String texto);
+  ///
+  /// Las intenciones reconocidas (plan/agua/entreno) siguen resolviéndose por
+  /// reglas, con datos exactos. Solo la conversación libre —cuando no hay una
+  /// intención clara— puede apoyarse en el modelo de lenguaje real, si hay
+  /// uno cargado ([conversacionDisponible]).
+  Future<RespuestaAsistente> responder(String texto, {List<Mensaje> historial});
 
   /// Pasos que se muestran mientras genera (RF-15, sección 3 · Dieta).
   List<String> get pasosDeGeneracion;
+
+  /// Si hay un modelo de lenguaje real cargado y listo para conversar
+  /// libremente. Sin él, lo no reconocido pide precisión con tres ejemplos
+  /// (comportamiento original de la sección 4.6) en vez de generar texto.
+  bool get conversacionDisponible;
+}
+
+/// Estado del modelo de IA local real (un LLM cuantizado). Sección 8 · ADR-03.
+enum EstadoModeloIA {
+  /// Todavía no se ha descargado ningún modelo.
+  sinInstalar,
+
+  /// Descarga en curso; ver [GestorModeloIA.progreso].
+  descargando,
+
+  /// Modelo descargado y cargado: el asistente puede conversar libremente.
+  listo,
+
+  /// La última descarga o carga falló; ver [GestorModeloIA.error].
+  error,
+}
+
+/// Ciclo de vida del modelo de IA local: descargarlo, seguir el progreso,
+/// cancelarlo o borrarlo. Independiente de [MotorIA]: el motor solo pregunta
+/// si hay un modelo listo, no cómo llegó a estarlo.
+///
+/// El modelo no puede ir empaquetado en la app (pesa cientos de MB a varios
+/// GB): se descarga la primera vez que la persona lo pide, nunca sola.
+abstract interface class GestorModeloIA {
+  EstadoModeloIA get estado;
+
+  /// Emite cada vez que cambia [estado] (incluidas las actualizaciones de
+  /// [progreso] mientras descarga).
+  Stream<EstadoModeloIA> get cambiosDeEstado;
+
+  /// Progreso de la descarga en curso, de 0 a 1.
+  double get progreso;
+
+  /// Motivo del último fallo, si [estado] es [EstadoModeloIA.error].
+  String? get error;
+
+  /// Descarga el modelo desde [urlModelo]. Algunos modelos (p. ej. Gemma)
+  /// exigen aceptar su licencia en Hugging Face y pasar el token de acceso
+  /// de esa cuenta en [tokenHuggingFace]; sin él, la descarga falla con 401.
+  Future<void> descargar({required String urlModelo, String? tokenHuggingFace});
+
+  Future<void> cancelarDescarga();
+
+  /// Borra el modelo descargado. Después, [conversacionDisponible] vuelve a
+  /// ser falso hasta la siguiente descarga.
+  Future<void> eliminarModelo();
+}
+
+/// Síntesis de voz: el asistente lee sus respuestas en voz alta.
+///
+/// Usa el motor de voz del sistema, offline en ambas plataformas (RNF-01).
+abstract interface class SintesisVoz {
+  Future<void> hablar(String texto);
+
+  Future<void> detener();
+
+  bool get hablando;
+}
+
+/// Llamada cruda al modelo de lenguaje real, con su propia memoria de turnos.
+///
+/// Separado de [MotorIA] para poder simularlo en pruebas: [MotorIA] decide
+/// *cuándo* conversar libremente (sección 4.6), esto decide *cómo* hablar con
+/// el modelo. La implementación real vive detrás de flutter_gemma.
+abstract interface class ConversadorIA {
+  /// Empieza una conversación nueva con esta instrucción de sistema.
+  Future<void> reiniciar({required String instruccionSistema});
+
+  /// Responde dentro de la conversación en curso.
+  Future<String> responder(String texto);
 }

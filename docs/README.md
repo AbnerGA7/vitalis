@@ -19,6 +19,7 @@ Vitalis es una app móvil de fitness en casa, **privada** y **accesible por dise
 | 09 | [Calidad, pruebas y roadmap](09-calidad-roadmap.md) | Estrategia de pruebas, definición de hecho, fases, riesgos |
 | 10 | [Glosario](10-glosario.md) | Términos del dominio |
 | 11 | [Decisiones tomadas](11-decisiones-tomadas.md) | ADR cerrados en la implementación en Flutter y supuestos que siguen abiertos |
+| 12 | [Modelo de IA local](12-modelo-ia-local.md) | Por qué el modelo viene integrado en la app, no descargado, y qué trade-offs implica |
 
 ## Cómo usar estos documentos
 

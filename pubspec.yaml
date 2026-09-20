@@ -20,6 +20,14 @@ dependencies:
   shared_preferences: ^2.3.3   # ADR-05 · almacén local
   path_provider: ^2.1.5        # ADR-08 · exportación a archivo
   speech_to_text: ^7.0.0       # ADR-04 · dictado del servicio del sistema
+  flutter_tts: ^4.2.5          # asistente hablando en voz alta (TTS)
+
+  # Motor de IA local real: LLM cuantizado corriendo en el dispositivo,
+  # sin red. flutter_gemma_mediapipe funciona en arm64 y tambien en x86_64
+  # (a diferencia del backend .litertlm, que es solo arm64), lo que amplia
+  # el rango de moviles compatibles.
+  flutter_gemma: ^1.8.3
+  flutter_gemma_mediapipe: ^1.0.6
 
 dev_dependencies:
   flutter_test:
@@ -32,6 +40,11 @@ flutter:
 
   assets:
     - assets/fuentes/OFL.txt
+    # Modelo de IA local empaquetado (ADR-03): se instala desde este asset al
+    # arrancar, sin red. No está en el repositorio (pesa ~520 MB, por encima
+    # del límite de GitHub); scripts/descargar_modelo_ia.sh lo descarga una
+    # vez, antes de compilar. Ver docs/12-modelo-ia-local.md.
+    - assets/modelo_ia/qwen2.5-0.5b-instruct-q8.task
 
   # Inter va empaquetada: descargarla en tiempo de ejecucion rompería el
   # requisito de funcionar sin red (RNF-01, RNF-09).

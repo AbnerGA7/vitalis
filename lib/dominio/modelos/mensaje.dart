@@ -10,7 +10,17 @@ import 'plan_comidas.dart';
 enum Autor { persona, asistente }
 
 /// Tipo de carga que acompaña a la respuesta del asistente (RF-13).
-enum TipoMensaje { texto, plan, agua, entreno, noEntendido }
+enum TipoMensaje {
+  texto,
+  plan,
+  agua,
+  entreno,
+  noEntendido,
+
+  /// Respuesta libre del modelo de IA real: solo texto, sin ejemplos fijos
+  /// ni acciones (ADR-03).
+  conversacionLibre,
+}
 
 class Mensaje {
   const Mensaje({
@@ -37,11 +47,16 @@ class Mensaje {
   /// Ejemplos que se ofrecen cuando no se ha entendido (RF-12).
   final List<String> ejemplos;
 
-  static TipoMensaje tipoDeIntencion(Intencion intencion) =>
+  static TipoMensaje tipoDeIntencion(
+    Intencion intencion, {
+    bool esConversacionLibre = false,
+  }) =>
       switch (intencion) {
         Intencion.plan => TipoMensaje.plan,
         Intencion.agua => TipoMensaje.agua,
         Intencion.entreno => TipoMensaje.entreno,
-        Intencion.desconocida => TipoMensaje.noEntendido,
+        Intencion.desconocida => esConversacionLibre
+            ? TipoMensaje.conversacionLibre
+            : TipoMensaje.noEntendido,
       };
 }

@@ -1,9 +1,20 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Dictado del asistente (RF-10, RF-11). Es el unico permiso que pide
-         Vitalis: no hay permiso de red porque la app no usa internet
-         (RNF-01, RNF-09). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Dictado del asistente (RF-10, RF-11). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Excepción deliberada y acotada a RNF-01/RNF-09: la app no usa la red
+         para ninguna función de uso diario. El único momento en que la usa
+         es la descarga, a petición explícita desde Perfil, del modelo de IA
+         local real (ADR-03); una vez descargado, todo vuelve a ser offline. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Exigido por flutter_gemma para el aviso de progreso de esa descarga
+         en Android 13+ y para el servicio en primer plano de Android 14+
+         (evita que el sistema mate una descarga larga en segundo plano). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- Necesario en Android 11+ para poder resolver el reconocedor de voz
          del sistema. -->
@@ -16,6 +27,10 @@
         android:label="Vitalis"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

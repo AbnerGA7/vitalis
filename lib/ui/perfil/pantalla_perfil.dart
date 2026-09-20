@@ -15,6 +15,7 @@ import '../widgets/controles.dart';
 import '../widgets/formato.dart';
 import '../widgets/medidor.dart';
 import '../widgets/tarjeta_imc.dart';
+import 'bloque_ia_local.dart';
 import 'bloque_privacidad.dart';
 
 class PantallaPerfil extends ConsumerWidget {
@@ -144,6 +145,9 @@ class PantallaPerfil extends ConsumerWidget {
             ),
             const SizedBox(height: Espacio.s),
           ],
+          const SizedBox(height: Espacio.xl),
+
+          const BloqueIALocal(),
           const SizedBox(height: Espacio.xl),
 
           const BloquePrivacidad(),

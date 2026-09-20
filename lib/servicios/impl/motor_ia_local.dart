@@ -10,6 +10,7 @@ import '../../dominio/logica/clasificador_intenciones.dart';
 import '../../dominio/logica/generador_plan.dart';
 import '../../dominio/logica/hidratacion.dart';
 import '../../dominio/modelos/enums.dart';
+import '../../dominio/modelos/mensaje.dart';
 import '../../dominio/modelos/plan_comidas.dart';
 import '../contratos/contratos.dart';
 
@@ -47,8 +48,16 @@ class MotorIALocal implements MotorIA {
         semilla: semilla,
       );
 
+  /// Sin modelo de lenguaje real detrás, este motor nunca inventa fuera de
+  /// las tres intenciones reconocidas (sección 4.6).
   @override
-  Future<RespuestaAsistente> responder(String texto) async {
+  bool get conversacionDisponible => false;
+
+  @override
+  Future<RespuestaAsistente> responder(
+    String texto, {
+    List<Mensaje> historial = const [],
+  }) async {
     final intencion = clasificarIntencion(texto);
     final contexto = obtenerContexto();
 

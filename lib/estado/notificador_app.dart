@@ -157,6 +157,13 @@ class NotificadorApp extends Notifier<EstadoApp> {
   /// Volcado legible de todo lo guardado (RF-52).
   Future<String> exportarDatos() => _almacen.exportar();
 
+  // --- IA local -------------------------------------------------------
+
+  /// Guarda la URL del modelo de IA descargado, para restaurarlo sin volver
+  /// a descargarlo la próxima vez que se abra la app. `null` la olvida.
+  Future<void> recordarModeloIA(String? url) =>
+      _almacen.guardarUrlModeloIA(url);
+
   /// «Borrar mis datos»: deja la app como recién instalada.
   Future<void> borrarDatos() async {
     await _almacen.borrarTodo();

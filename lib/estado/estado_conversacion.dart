@@ -3,10 +3,13 @@
 /// Es efímera: arranca vacía cada día y nunca se guarda (RF-16).
 library;
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../dominio/modelos/mensaje.dart';
 import '../servicios/contratos/contratos.dart';
+import '../servicios/impl/motor_ia_hibrido.dart';
 import 'notificador_app.dart';
 import 'proveedores.dart';
 
@@ -113,7 +116,10 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
     final mensaje = Mensaje(
       autor: Autor.asistente,
       texto: respuesta.texto,
-      tipo: Mensaje.tipoDeIntencion(respuesta.intencion),
+      tipo: Mensaje.tipoDeIntencion(
+        respuesta.intencion,
+        esConversacionLibre: respuesta.esConversacionLibre,
+      ),
       plan: respuesta.plan,
       ejemplos: respuesta.ejemplos,
     );
@@ -124,6 +130,18 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
       pasoPensando: '',
     );
     _anunciador.anunciar(respuesta.texto, prioridad: PrioridadAnuncio.cortes);
+    // El chat de voz no espera a que termine de hablar para seguir usable:
+    // la voz es un añadido, el texto ya está en pantalla.
+    unawaited(_hablar(respuesta.texto));
+  }
+
+  Future<void> _hablar(String texto) async {
+    try {
+      await ref.read(sintesisVozProvider).hablar(texto);
+    } on Exception {
+      // La respuesta ya está en pantalla y anunciada al lector; si falla la
+      // voz, no hay por qué interrumpir la conversación.
+    }
   }
 
   /// Arranca el dictado. La transcripción en vivo sirve de subtítulo (RF-11).
@@ -142,8 +160,12 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
       alTranscribir: (transcripcion) {
         if (!_vivo) return;
         state = state.copiarCon(borrador: transcripcion.texto);
-        if (transcripcion.definitiva) {
-          state = state.copiarCon(fase: FaseAsistente.reposo);
+        if (transcripcion.definitiva && transcripcion.texto.trim().isNotEmpty) {
+          // Cierra el turno enviando lo dictado sin esperar a que se pulse
+          // enviar: así el micro funciona como un chat de voz completo
+          // (hablas → responde → lo escuchas), no solo como dictado a un
+          // campo de texto.
+          unawaited(enviar(transcripcion.texto));
         }
       },
       alFallar: (error) {
@@ -170,7 +192,13 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
   }
 
   /// La conversación arranca vacía cada día (RF-16).
+  ///
+  /// Si el motor híbrido tiene una conversación abierta con el modelo real,
+  /// también se olvida: el contexto de un día no debe colarse en el
+  /// siguiente.
   void vaciar() {
+    final motor = _motor;
+    if (motor is MotorIAHibrido) motor.reiniciarConversacion();
     state = EstadoConversacion(vozDisponible: state.vozDisponible);
   }
 }

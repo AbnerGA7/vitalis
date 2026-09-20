@@ -9,6 +9,7 @@ import 'package:vitalis/dominio/modelos/enums.dart';
 import 'package:vitalis/dominio/modelos/perfil.dart';
 import 'package:vitalis/estado/estado_app.dart';
 import 'package:vitalis/estado/proveedores.dart';
+import 'package:vitalis/servicios/contratos/contratos.dart';
 
 import 'dobles.dart';
 
@@ -31,8 +32,10 @@ class Entorno {
     Preferencias? preferencias,
     int aguaMl = 0,
     bool hayDictado = true,
+    EstadoModeloIA estadoModeloIA = EstadoModeloIA.sinInstalar,
   })  : reloj = RelojFalso(ahora ?? DateTime(2026, 9, 19, 9)),
-        voz = VozFalsa(hayDictado: hayDictado) {
+        voz = VozFalsa(hayDictado: hayDictado),
+        gestorModeloIA = GestorModeloIAFalso(estado: estadoModeloIA) {
     final momento = reloj.ahora();
     estadoInicial = EstadoApp(
       perfil: perfil ?? Perfil.inicial(),
@@ -48,6 +51,9 @@ class Entorno {
   final AlmacenFalso almacen = AlmacenFalso();
   final HapticoEspia haptico = HapticoEspia();
   final AnunciadorEspia anunciador = AnunciadorEspia();
+  final GestorModeloIAFalso gestorModeloIA;
+  final ConversadorIAFalso conversadorIA = ConversadorIAFalso();
+  final SintesisVozEspia sintesisVoz = SintesisVozEspia();
   late final EstadoApp estadoInicial;
 
   List<Override> get overrides => [
@@ -57,6 +63,9 @@ class Entorno {
         hapticoProvider.overrideWithValue(haptico),
         anunciadorProvider.overrideWithValue(anunciador),
         vozProvider.overrideWithValue(voz),
+        gestorModeloIAProvider.overrideWithValue(gestorModeloIA),
+        conversadorIAProvider.overrideWithValue(conversadorIA),
+        sintesisVozProvider.overrideWithValue(sintesisVoz),
       ];
 
   ProviderContainer contenedor() {

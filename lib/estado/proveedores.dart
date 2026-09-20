@@ -8,8 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../dominio/catalogo/rutinas.dart';
 import '../servicios/contratos/contratos.dart';
+import '../servicios/impl/conversador_gemma.dart';
 import '../servicios/impl/dispositivo.dart';
+import '../servicios/impl/motor_ia_hibrido.dart';
 import '../servicios/impl/motor_ia_local.dart';
+import '../servicios/impl/sintesis_voz_sistema.dart';
 import '../servicios/impl/voz_sistema.dart';
 import 'estado_app.dart';
 import 'notificador_app.dart';
@@ -48,27 +51,66 @@ final vozProvider = Provider<Voz>((ref) {
   return voz;
 });
 
-/// Motor de IA local. Recibe el contexto del estado compartido, de forma que
-/// cambiar el peso en Perfil cambia también lo que responde el asistente.
-final motorIaProvider = Provider<MotorIA>((ref) {
-  return MotorIALocal(
-    reloj: ref.watch(relojProvider),
-    obtenerContexto: () {
-      final estado = ref.read(estadoAppProvider);
-      return ContextoAsistente(
-        pesoKg: estado.perfil.pesoKg,
-        tasa: estado.perfil.tasaProteina,
-        preferencia: estado.perfil.preferenciaDieta,
-        aguaMl: estado.aguaMl,
-        nombreRutina: rutinaRecomendada(
-          objetivo: estado.perfil.objetivo,
-          preferencias: estado.preferencias,
-          fecha: estado.dia,
-        ).nombre,
-      );
-    },
+/// Voz de salida: el asistente lee sus respuestas en alto (chat de voz).
+final sintesisVozProvider = Provider<SintesisVoz>((ref) {
+  if (const bool.fromEnvironment('VITALIS_SIN_TTS', defaultValue: false)) {
+    return const SintesisVozSilenciosa();
+  }
+  return SintesisVozSistema();
+});
+
+/// Ciclo de vida del modelo de IA local real: instalado / descargando / listo.
+///
+/// `main` lo sustituye por una instancia ya restaurada desde el almacén, para
+/// que un modelo descargado en una sesión anterior siga listo al reabrir la
+/// app sin tener que descargarlo otra vez.
+final gestorModeloIAProvider = Provider<GestorModeloIA>((ref) {
+  throw UnimplementedError(
+    'gestorModeloIAProvider debe sobrescribirse al arrancar la aplicación.',
   );
 });
+
+/// Llamada cruda al modelo de lenguaje, detrás de su propio contrato para
+/// poder simularla en pruebas sin tocar flutter_gemma.
+final conversadorIAProvider =
+    Provider<ConversadorIA>((ref) => ConversadorGemma());
+
+/// Motor por reglas: siempre resuelve lo estructurado (plan/agua/entreno),
+/// con o sin modelo de lenguaje real cargado.
+final _motorReglasProvider = Provider<MotorIA>((ref) {
+  return MotorIALocal(
+    reloj: ref.watch(relojProvider),
+    obtenerContexto: () => _contextoDesdeEstado(ref),
+  );
+});
+
+/// Motor de IA local: reglas para lo estructurado, modelo real para la
+/// conversación libre cuando hay uno cargado (ADR-03). Recibe el contexto del
+/// estado compartido, de forma que cambiar el peso en Perfil cambia también
+/// lo que responde el asistente.
+final motorIaProvider = Provider<MotorIA>((ref) {
+  return MotorIAHibrido(
+    base: ref.watch(_motorReglasProvider),
+    gestor: ref.watch(gestorModeloIAProvider),
+    conversador: ref.watch(conversadorIAProvider),
+    obtenerContexto: () => _contextoDesdeEstado(ref),
+  );
+});
+
+ContextoAsistente _contextoDesdeEstado(Ref ref) {
+  final estado = ref.read(estadoAppProvider);
+  return ContextoAsistente(
+    pesoKg: estado.perfil.pesoKg,
+    tasa: estado.perfil.tasaProteina,
+    preferencia: estado.perfil.preferenciaDieta,
+    aguaMl: estado.aguaMl,
+    nombreRutina: rutinaRecomendada(
+      objetivo: estado.perfil.objetivo,
+      preferencias: estado.preferencias,
+      fecha: estado.dia,
+    ).nombre,
+  );
+}
 
 /// Rutina recomendada del día, derivada del estado compartido (RF-40).
 final rutinaDelDiaProvider = Provider((ref) {

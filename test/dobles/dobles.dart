@@ -28,6 +28,7 @@ class AlmacenFalso implements Almacen {
   PlanComidas? plan;
   final Map<String, int> agua = {};
   final List<SesionEntreno> sesiones = [];
+  String? urlModeloIA;
 
   @override
   Future<Perfil?> leerPerfil() async => perfil;
@@ -63,6 +64,12 @@ class AlmacenFalso implements Almacen {
       sesiones.add(sesion);
 
   @override
+  Future<String?> leerUrlModeloIA() async => urlModeloIA;
+
+  @override
+  Future<void> guardarUrlModeloIA(String? url) async => urlModeloIA = url;
+
+  @override
   Future<String> exportar() async => '{"perfil":"simulado"}';
 
   @override
@@ -72,6 +79,7 @@ class AlmacenFalso implements Almacen {
     plan = null;
     agua.clear();
     sesiones.clear();
+    urlModeloIA = null;
   }
 
   static String _clave(DateTime fecha) =>
@@ -142,4 +150,85 @@ class VozFalsa implements Voz {
       _alTranscribir?.call(
         Transcripcion(texto: texto, definitiva: definitiva),
       );
+}
+
+/// Ciclo de vida del modelo de IA controlado desde la prueba.
+class GestorModeloIAFalso implements GestorModeloIA {
+  GestorModeloIAFalso({this.estado = EstadoModeloIA.sinInstalar});
+
+  @override
+  EstadoModeloIA estado;
+
+  @override
+  double progreso = 0;
+
+  @override
+  String? error;
+
+  final List<String> urlsDescargadas = [];
+  bool cancelada = false;
+  bool eliminado = false;
+
+  @override
+  Future<void> descargar({
+    required String urlModelo,
+    String? tokenHuggingFace,
+  }) async {
+    urlsDescargadas.add(urlModelo);
+    estado = EstadoModeloIA.listo;
+  }
+
+  @override
+  Future<void> cancelarDescarga() async => cancelada = true;
+
+  @override
+  Future<void> eliminarModelo() async {
+    eliminado = true;
+    estado = EstadoModeloIA.sinInstalar;
+  }
+
+  @override
+  Stream<EstadoModeloIA> get cambiosDeEstado => const Stream.empty();
+}
+
+/// Conversación con el modelo, simulada: devuelve lo que la prueba prepare.
+class ConversadorIAFalso implements ConversadorIA {
+  String? instruccionRecibida;
+  final List<String> mensajesRecibidos = [];
+  String respuesta = 'Respuesta simulada del modelo.';
+
+  /// Si no es null, `responder` lanza esta excepción en vez de responder.
+  Object? fallarCon;
+
+  @override
+  Future<void> reiniciar({required String instruccionSistema}) async {
+    instruccionRecibida = instruccionSistema;
+    mensajesRecibidos.clear();
+  }
+
+  @override
+  Future<String> responder(String texto) async {
+    mensajesRecibidos.add(texto);
+    final fallo = fallarCon;
+    if (fallo != null) throw fallo;
+    return respuesta;
+  }
+}
+
+/// Voz de salida que solo apunta lo que se le pide decir.
+class SintesisVozEspia implements SintesisVoz {
+  final List<String> dicho = [];
+
+  @override
+  bool hablando = false;
+
+  @override
+  Future<void> hablar(String texto) async {
+    hablando = true;
+    dicho.add(texto);
+    hablando = false;
+  }
+
+  @override
+  Future<void> detener() async => hablando = false;
 }

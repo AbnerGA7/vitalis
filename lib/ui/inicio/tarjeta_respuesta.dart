@@ -62,6 +62,7 @@ class BurbujaMensaje extends ConsumerWidget {
           TipoMensaje.entreno => const _AccionesEntreno(),
           TipoMensaje.noEntendido => _Ejemplos(ejemplos: mensaje.ejemplos),
           TipoMensaje.texto => const SizedBox.shrink(),
+          TipoMensaje.conversacionLibre => const SizedBox.shrink(),
         },
       ],
     );

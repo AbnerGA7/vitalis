@@ -4,19 +4,26 @@ App móvil de fitness en casa, **privada** y **accesible por diseño**.
 Implementación en Flutter de la [documentación de desarrollo](docs/README.md).
 
 Todo ocurre en el dispositivo: sin cuenta, sin nube y sin analítica. Un
-asistente de IA local, por voz y texto, es la puerta de entrada, pero Dieta,
-Entreno y Perfil siguen siendo accesibles directamente.
+asistente conversacional con un **modelo de IA real empaquetado en la app**
+(no descargado) es la puerta de entrada, con chat de voz completo —hablas,
+te escucha, te responde y te lo dice en voz alta—, pero Dieta, Entreno y
+Perfil siguen siendo accesibles directamente.
 
 ## Arrancar
 
 ```bash
 flutter pub get
-flutter run           # Android o iOS
-flutter test          # 88 pruebas
-dart analyze          # sin avisos
+./scripts/descargar_modelo_ia.sh   # una sola vez: ~520 MB, ver docs/12
+flutter run                         # Android o iOS
+flutter test                        # 112 pruebas
+dart analyze                        # sin avisos
 ```
 
-Requiere Flutter 3.47 o superior (Dart 3.13).
+Requiere Flutter 3.47 o superior (Dart 3.13). El modelo de IA **no** está en
+el repositorio (pesa más que el límite de GitHub); el script lo descarga una
+única vez, antes de compilar — ver
+[docs/12-modelo-ia-local.md](docs/12-modelo-ia-local.md). Sin ese paso,
+`flutter build`/`flutter run` fallan señalando el asset que falta.
 
 ## Cómo está organizado
 
@@ -31,16 +38,22 @@ lib/
     logica/
     catalogo/         Platos y rutinas.
   servicios/
-    contratos/        Almacen · Voz · Haptico · Anunciador · MotorIA · Reloj
+    contratos/        Almacen · Voz · SintesisVoz · Haptico · Anunciador ·
+                       MotorIA · ConversadorIA · GestorModeloIA · Reloj
     impl/             Implementaciones reales, sustituibles una a una.
+                       motor_ia_hibrido.dart: reglas para lo estructurado
+                       (plan/agua/entreno, nunca inventadas) + el modelo real
+                       para la conversación libre.
   estado/             Una sola fuente de verdad (Riverpod) + notificadores.
   core/               Tokens y temas de Nocturne.
   ui/                 Onboarding · Inicio · Dieta · Entreno · Reproductor · Perfil
+assets/
+  modelo_ia/          Modelo de IA local (.gitignore; ver scripts/).
 test/
-  dominio/            58 pruebas de lógica pura, con reloj simulado.
-  estado/             17 pruebas de estado y del reproductor.
-  ui/                 13 pruebas de flujos y de accesibilidad.
-  dobles/             Dobles de los seis contratos.
+  dominio/            61 pruebas de lógica pura, con reloj simulado.
+  estado/             34 pruebas de estado, reproductor, IA híbrida y chat de voz.
+  ui/                 17 pruebas de flujos y de accesibilidad.
+  dobles/             Dobles de los nueve contratos.
 ```
 
 El **reproductor es una capa, no una pestaña**: mientras se entrena, la
@@ -49,9 +62,16 @@ teclado, no solo tapada.
 
 ## Privacidad
 
-- No se declara permiso de red: la app no usa internet.
-- El único permiso que pide es el **micrófono**, y solo para el dictado, que
-  se fuerza a reconocimiento **en el dispositivo**.
+- El modelo de IA local viene **empaquetado en la app** (ADR-03) y se
+  instala desde ahí al arrancar: cero peticiones de red en el uso normal.
+  Ver [docs/12-modelo-ia-local.md](docs/12-modelo-ia-local.md).
+- El permiso `INTERNET` existe por una única vía avanzada y opt-in en
+  Perfil → «IA local» → «Usar otro modelo», para quien quiera sustituir el
+  modelo empaquetado por otro descargado por URL. Es el único punto de toda
+  la app donde se usa la red.
+- El micrófono es para el dictado, forzado a reconocimiento **en el
+  dispositivo**. La voz de salida usa el motor de TTS del sistema, también
+  offline.
 - La tipografía Inter va empaquetada en `assets/fuentes/`; descargarla en
   tiempo de ejecución rompería el requisito de funcionar sin conexión.
 - «Exportar mis datos» genera un JSON legible que se muestra y se copia al
