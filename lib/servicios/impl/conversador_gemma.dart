@@ -18,7 +18,10 @@ class ConversadorGemma implements ConversadorIA {
     _modelo = await FlutterGemma.getActiveModel(maxTokens: 1024);
     _chat = await _modelo!.createChat(
       systemInstruction: instruccionSistema,
-      maxOutputTokens: 220,
+      // Respuestas más cortas generan antes: el prompt ya pide frases
+      // cortas, así que 140 tokens de margen no recorta el contenido, solo
+      // la latencia del chat de voz.
+      maxOutputTokens: 140,
       temperature: 0.7,
     );
   }

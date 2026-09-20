@@ -92,7 +92,11 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
   }
 
   /// Envía lo que hay en el campo, venga del teclado o del dictado (RF-10).
-  Future<void> enviar([String? texto]) async {
+  ///
+  /// [porVoz] evita el retraso artificial de los pasos de «pensando»: en el
+  /// chat de voz esa espera se suma a la de la propia inferencia local, y ahí
+  /// cada milisegundo se nota.
+  Future<void> enviar([String? texto, bool porVoz = false]) async {
     final contenido = (texto ?? state.borrador).trim();
     if (contenido.isEmpty) return;
 
@@ -107,8 +111,10 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
     );
     _anunciador.anunciar('Pensando', prioridad: PrioridadAnuncio.cortes);
 
-    await Future<void>.delayed(pausaEntrePasosGeneracion);
-    state = state.copiarCon(pasoPensando: 'Mirando tu perfil');
+    if (!porVoz) {
+      await Future<void>.delayed(pausaEntrePasosGeneracion);
+      state = state.copiarCon(pasoPensando: 'Mirando tu perfil');
+    }
 
     final respuesta = await _motor.responder(contenido);
     if (!_vivo) return;
@@ -165,7 +171,7 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
           // enviar: así el micro funciona como un chat de voz completo
           // (hablas → responde → lo escuchas), no solo como dictado a un
           // campo de texto.
-          unawaited(enviar(transcripcion.texto));
+          unawaited(enviar(transcripcion.texto, true));
         }
       },
       alFallar: (error) {
