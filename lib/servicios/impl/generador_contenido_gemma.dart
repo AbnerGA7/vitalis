@@ -9,9 +9,17 @@
 /// (RNF-01).
 library;
 
+import 'dart:async';
+
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 import '../contratos/contratos.dart';
+
+/// Tope de espera para una generación (receta o rutina). Aquí sí hace falta
+/// la respuesta entera para poder parsear el JSON —a diferencia del chat, no
+/// tiene sentido quedarse con un JSON a medias—, así que el tope es sobre la
+/// respuesta completa, no por silencio entre tokens.
+const Duration _tiempoMaximoGeneracion = Duration(seconds: 40);
 
 class GeneradorContenidoGemma implements GeneradorContenidoIA {
   @override
@@ -33,15 +41,21 @@ class GeneradorContenidoGemma implements GeneradorContenidoIA {
         temperature: 0.8,
       );
       await chat.addQuery(Message.text(text: peticion, isUser: true));
-      final respuesta = await chat.generateChatResponse();
+      // Mismo riesgo que tenía el chat antes de arreglarlo: sin tope, un
+      // cuelgue del motor nativo a media generación dejaba "Generando..."
+      // esperando para siempre.
+      final respuesta = await chat
+          .generateChatResponse()
+          .timeout(_tiempoMaximoGeneracion);
       return switch (respuesta) {
         TextResponse(:final token) =>
           token.trim().isEmpty ? null : token.trim(),
         _ => null,
       };
     } catch (_) {
-      // Sin modelo listo, error del plugin nativo, lo que sea: se traduce en
-      // null y quien llama cae al catálogo de respaldo (sección 4.3, 4.5).
+      // Sin modelo listo, error del plugin nativo, colgado, lo que sea: se
+      // traduce en null y quien llama cae al catálogo de respaldo (sección
+      // 4.3, 4.5).
       return null;
     } finally {
       await modelo?.close();
