@@ -9,6 +9,7 @@ library;
 
 import 'dart:async';
 
+import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../contratos/contratos.dart';
@@ -24,11 +25,13 @@ class VozSistema implements Voz {
   bool _iniciado = false;
   Timer? _temporizadorCierre;
 
-  /// Locale español elegido de entre los que el propio dispositivo tiene
-  /// instalados para reconocimiento en el dispositivo. `null` si no hay
-  /// ninguno: en ese caso se deja que el reconocedor use su locale de
-  /// sistema por defecto en vez de forzar uno.
-  String? _localeElegido;
+  /// El `alFallar` del `escuchar()` en curso. Los errores del reconocedor
+  /// (p. ej. que el idioma configurado no tenga su paquete de datos
+  /// descargado) no llegan como excepción de `listen()`: llegan de forma
+  /// asíncrona al `onError` registrado en `initialize()`. Sin reenviarlos
+  /// aquí, un fallo del motor dejaba el turno en «escuchando» para siempre,
+  /// sin avisar a nadie ni mostrar ningún error.
+  void Function(Object error)? _alFallarActual;
 
   @override
   bool get escuchando => _motor.isListening;
@@ -38,37 +41,18 @@ class VozSistema implements Voz {
     if (_iniciado) return true;
     try {
       _iniciado = await _motor.initialize(
-        onError: (_) {},
+        onError: _alFallarDelMotor,
         onStatus: (_) {},
       );
-      if (_iniciado) _localeElegido = await _elegirLocale();
     } on Exception {
       _iniciado = false;
     }
     return _iniciado;
   }
 
-  /// Pedir un locale que el teléfono no tiene descargado (p. ej. forzar
-  /// «es_ES» en un equipo que solo trae «es-US») hace que el reconocedor
-  /// falle con `LANGUAGE_PACK_ERROR` sin dictar una sola palabra. En vez de
-  /// forzar uno fijo, se elige entre los que el propio dispositivo reporta
-  /// como disponibles: preferentemente español de Perú, si no cualquier
-  /// español, y si no hay ninguno, se deja que decida el sistema.
-  Future<String?> _elegirLocale() async {
-    List<LocaleName> disponibles;
-    try {
-      disponibles = await _motor.locales();
-    } on Exception {
-      return null;
-    }
-    LocaleName? algunEspanol;
-    for (final locale in disponibles) {
-      final id = locale.localeId.toLowerCase();
-      if (!id.startsWith('es')) continue;
-      if (id.contains('pe')) return locale.localeId;
-      algunEspanol ??= locale;
-    }
-    return algunEspanol?.localeId;
+  void _alFallarDelMotor(SpeechRecognitionError error) {
+    _temporizadorCierre?.cancel();
+    _alFallarActual?.call(StateError(error.errorMsg));
   }
 
   @override
@@ -76,6 +60,7 @@ class VozSistema implements Voz {
     required void Function(Transcripcion) alTranscribir,
     required void Function(Object error) alFallar,
   }) async {
+    _alFallarActual = alFallar;
     if (!await disponible()) {
       alFallar(
         StateError('Este dispositivo no ofrece dictado sin conexión.'),
@@ -101,11 +86,11 @@ class VozSistema implements Voz {
           onDevice: true,
           partialResults: true,
           listenMode: ListenMode.dictation,
-          localeId: _localeElegido,
-          // Un error transitorio (p. ej. un instante sin habla detectada) no
-          // debe abortar el turno entero: se deja que `pauseFor`, o el
-          // temporizador de respaldo de abajo, lo cierren con normalidad en
-          // vez de mandar a la persona directo al mensaje de error.
+          // Sin locale fijo: forzar uno (p. ej. «es_ES») falla con
+          // LANGUAGE_PACK_ERROR si el teléfono no tiene ese paquete de datos
+          // descargado, aunque el idioma aparezca listado como «soportado».
+          // Se deja que el reconocedor use el idioma de voz que ya tiene
+          // configurado y funcionando en el resto del sistema.
           cancelOnError: false,
           pauseFor: _pausaFinal,
           listenFor: const Duration(seconds: 30),
