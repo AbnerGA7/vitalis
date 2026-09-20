@@ -4,9 +4,18 @@
 /// ninguna conexión: todo el cálculo ocurre en el dispositivo (RNF-01).
 library;
 
+import 'dart:async';
+
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 import '../contratos/contratos.dart';
+
+/// Tope de espera para una respuesta del modelo. Sin esto, una generación
+/// que se cuelga en el motor nativo (pasa en algunos teléfonos con ciertos
+/// mensajes) deja el chat esperando para siempre y sin avisar a nadie: con
+/// el tope, se lanza una excepción y MotorIAHibrido cae a la respuesta por
+/// reglas, que siempre contesta algo.
+const Duration _tiempoMaximoRespuesta = Duration(seconds: 25);
 
 class ConversadorGemma implements ConversadorIA {
   InferenceModel? _modelo;
@@ -36,7 +45,8 @@ class ConversadorGemma implements ConversadorIA {
       throw StateError('Llama a reiniciar() antes de responder().');
     }
     await chat.addQuery(Message.text(text: texto, isUser: true));
-    final respuesta = await chat.generateChatResponse();
+    final respuesta =
+        await chat.generateChatResponse().timeout(_tiempoMaximoRespuesta);
     return switch (respuesta) {
       TextResponse(:final token) => token.trim().isEmpty
           ? 'No se me ocurre nada que añadir a eso.'

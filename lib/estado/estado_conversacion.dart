@@ -116,6 +116,12 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
   Future<void> enviar([String? texto, bool porVoz = false]) async {
     final contenido = (texto ?? state.borrador).trim();
     if (contenido.isEmpty) return;
+    // Sin este guard, un segundo turno (p. ej. otro tramo dictado mientras el
+    // anterior seguía «pensando») lanzaba una llamada nueva al modelo encima
+    // de la que ya estaba en curso, y como el motor solo sirve una
+    // generación a la vez, las siguientes se quedaban esperando en fila
+    // detrás de la primera sin que nada volviera a responder.
+    if (state.fase == FaseAsistente.pensando) return;
 
     await detenerDictado();
 
