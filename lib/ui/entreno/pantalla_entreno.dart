@@ -13,6 +13,7 @@ import '../../estado/estado_entreno.dart';
 import '../../estado/notificador_app.dart';
 import '../../estado/proveedores.dart';
 import '../widgets/componentes.dart';
+import '../widgets/indicadores.dart';
 import 'resumen_semanal.dart';
 
 class PantallaEntreno extends ConsumerWidget {
@@ -132,18 +133,31 @@ class _RutinaPorIA extends ConsumerWidget {
     final estado = ref.watch(estadoAppProvider);
     final notificador = ref.read(estadoAppProvider.notifier);
 
+    final String clave;
+    final Widget contenido;
     if (estado.generandoRutina) {
-      return _GenerandoRutina(actual: estado.pasoGeneracionRutina);
+      clave = 'generando';
+      contenido = _GenerandoRutina(actual: estado.pasoGeneracionRutina);
+    } else {
+      final hayRutinaIA = estado.rutinaIA != null;
+      clave = hayRutinaIA ? 'regenerar' : 'generar';
+      contenido = BotonVitalis(
+        texto: hayRutinaIA ? 'Regenerar con IA' : 'Generar con IA',
+        nombreAccesible: hayRutinaIA
+            ? 'Pedirle a la IA otra rutina distinta'
+            : 'Pedirle a la IA una rutina de ejercicios para hoy',
+        ocuparAncho: true,
+        onPressed: () => notificador.generarRutinaIA(regenerar: hayRutinaIA),
+      );
     }
 
-    final hayRutinaIA = estado.rutinaIA != null;
-    return BotonVitalis(
-      texto: hayRutinaIA ? 'Regenerar con IA' : 'Generar con IA',
-      nombreAccesible: hayRutinaIA
-          ? 'Pedirle a la IA otra rutina distinta'
-          : 'Pedirle a la IA una rutina de ejercicios para hoy',
-      ocuparAncho: true,
-      onPressed: () => notificador.generarRutinaIA(regenerar: hayRutinaIA),
+    return AnimatedSwitcher(
+      duration: movimientoReducido(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 260),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: KeyedSubtree(key: ValueKey(clave), child: contenido),
     );
   }
 }

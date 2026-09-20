@@ -14,6 +14,7 @@ import '../../estado/notificador_app.dart';
 import '../../estado/proveedores.dart';
 import '../cascaron.dart';
 import '../widgets/componentes.dart';
+import '../widgets/indicadores.dart';
 
 class BurbujaMensaje extends ConsumerWidget {
   const BurbujaMensaje({super.key, required this.mensaje});
@@ -22,6 +23,27 @@ class BurbujaMensaje extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Entrada suave al aparecer un mensaje nuevo. El tween es constante
+    // entre reconstrucciones, así que solo se reproduce una vez, al montar
+    // el widget (cuando el mensaje se añade a la lista), no en cada rebuild.
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: movimientoReducido(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+      builder: (context, valor, child) => Opacity(
+        opacity: valor,
+        child: Transform.translate(
+          offset: Offset(0, (1 - valor) * 10),
+          child: child,
+        ),
+      ),
+      child: _contenido(context, ref),
+    );
+  }
+
+  Widget _contenido(BuildContext context, WidgetRef ref) {
     final tema = Theme.of(context);
     final paleta = context.paleta;
 

@@ -44,9 +44,21 @@ class BloqueHidratacion extends ConsumerWidget {
                 excludeSemantics: true,
                 child: Row(
                   children: [
-                    AnilloProgreso(
-                      progreso: estado.progresoDeAgua,
-                      diametro: 84,
+                    // Solo el relleno del anillo se anima; el mismo widget
+                    // también pinta la cuenta atrás del cronómetro, que debe
+                    // ser exacta al segundo y no puede arrastrar retraso de
+                    // una animación (RNF-06).
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(end: estado.progresoDeAgua),
+                      duration: movimientoReducido(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 450),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, valor, child) => AnilloProgreso(
+                        progreso: valor,
+                        diametro: 84,
+                        child: child!,
+                      ),
                       child: Text(
                         '${(estado.progresoDeAgua * 100).round()}%',
                         style: tema.textTheme.titleSmall,

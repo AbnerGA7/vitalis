@@ -11,6 +11,7 @@ import '../../dominio/modelos/plan_comidas.dart';
 import '../../estado/notificador_app.dart';
 import '../../estado/proveedores.dart';
 import '../widgets/componentes.dart';
+import '../widgets/indicadores.dart';
 
 class TarjetaPlan extends ConsumerWidget {
   const TarjetaPlan({super.key});
@@ -20,22 +21,39 @@ class TarjetaPlan extends ConsumerWidget {
     final estado = ref.watch(estadoAppProvider);
     final notificador = ref.read(estadoAppProvider.notifier);
 
+    final String clave;
+    final Widget contenido;
     if (estado.generandoPlan) {
-      return _Generando(
+      clave = 'generando';
+      contenido = _Generando(
         pasos: ref.read(motorIaProvider).pasosDeGeneracion,
         actual: estado.pasoGeneracion,
       );
+    } else {
+      final plan = estado.plan;
+      if (plan == null || !estado.planVigente) {
+        clave = 'sin-plan';
+        contenido = _SinPlan(
+          desactualizado: plan != null,
+          onGenerar: notificador.generarPlan,
+        );
+      } else {
+        clave = 'con-plan';
+        contenido = _ConPlan(plan: plan);
+      }
     }
 
-    final plan = estado.plan;
-    if (plan == null || !estado.planVigente) {
-      return _SinPlan(
-        desactualizado: plan != null,
-        onGenerar: notificador.generarPlan,
-      );
-    }
-
-    return _ConPlan(plan: plan);
+    // Cruce suave entre «generando» / «sin plan» / «con plan» en vez de un
+    // salto seco; respeta «movimiento reducido» igual que el resto de
+    // animaciones decorativas de la app (RNF-05).
+    return AnimatedSwitcher(
+      duration: movimientoReducido(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 260),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: KeyedSubtree(key: ValueKey(clave), child: contenido),
+    );
   }
 }
 
