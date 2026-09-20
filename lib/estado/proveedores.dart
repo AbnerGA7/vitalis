@@ -121,11 +121,15 @@ ContextoAsistente _contextoDesdeEstado(Ref ref) {
 }
 
 /// Rutina recomendada del día, derivada del estado compartido (RF-40).
+///
+/// Si hay una rutina de hoy generada por IA ([EstadoApp.rutinaIA]), esa gana;
+/// si no, cae al catálogo fijo (sección 4.5).
 final rutinaDelDiaProvider = Provider((ref) {
   final estado = ref.watch(estadoAppProvider);
-  return rutinaRecomendada(
-    objetivo: estado.perfil.objetivo,
-    preferencias: estado.preferencias,
-    fecha: estado.dia,
-  );
+  return estado.rutinaIA ??
+      rutinaRecomendada(
+        objetivo: estado.perfil.objetivo,
+        preferencias: estado.preferencias,
+        fecha: estado.dia,
+      );
 });

@@ -10,9 +10,19 @@ import '../dominio/logica/hidratacion.dart';
 import '../dominio/modelos/enums.dart';
 import '../dominio/modelos/perfil.dart';
 import '../dominio/modelos/plan_comidas.dart';
+import '../dominio/modelos/rutina.dart';
 import '../servicios/contratos/contratos.dart';
+import '../servicios/impl/generador_rutina_ia.dart';
 import 'estado_app.dart';
 import 'proveedores.dart';
+
+/// Pasos del indicador «generando» de la rutina de Entreno (mismo patrón que
+/// Dieta, RF-15).
+const List<String> pasosDeGeneracionRutina = [
+  'Pensando ejercicios para hoy',
+  'Ajustando tiempos y descansos',
+  'Revisando que todo tenga sentido',
+];
 
 /// Pausa entre pasos del indicador «generando» (RF-15).
 const Duration pausaEntrePasosGeneracion = Duration(milliseconds: 320);
@@ -132,6 +142,44 @@ class NotificadorApp extends Notifier<EstadoApp> {
     await _almacen.guardarPlan(plan);
   }
 
+  // --- Rutina del día por IA -------------------------------------------
+
+  /// Genera la rutina de hoy con IA (sección 4.5). A diferencia del plan de
+  /// comidas, aquí el ejercicio en sí también lo decide el modelo, no solo
+  /// el nombre: la persona lo pidió así. Si el modelo no está listo o la
+  /// respuesta no es válida, no se toca [EstadoApp.rutinaIA] y Entreno sigue
+  /// mostrando el catálogo fijo (rutinaDelDiaProvider ya hace esa caída).
+  Future<void> generarRutinaIA({bool regenerar = false}) async {
+    if (state.generandoRutina) return;
+    state = state.copiarCon(generandoRutina: true, pasoGeneracionRutina: 0);
+
+    for (var i = 0; i < pasosDeGeneracionRutina.length; i++) {
+      state = state.copiarCon(pasoGeneracionRutina: i);
+      await Future<void>.delayed(pausaEntrePasosGeneracion);
+    }
+
+    Rutina? rutina;
+    if (ref.read(gestorModeloIAProvider).estado == EstadoModeloIA.listo) {
+      rutina = await generarRutinaConIA(
+        generador: ref.read(generadorContenidoIAProvider),
+        objetivo: state.perfil.objetivo,
+        id: 'ia-${state.dia.year}-${state.dia.month}-${state.dia.day}'
+            '-${_reloj.ahora().millisecondsSinceEpoch}',
+      );
+    }
+
+    if (rutina != null) {
+      state = state.copiarCon(
+        rutinaIA: rutina,
+        generandoRutina: false,
+        pasoGeneracionRutina: 0,
+      );
+      await _almacen.guardarRutinaIA(state.dia, rutina);
+    } else {
+      state = state.copiarCon(generandoRutina: false, pasoGeneracionRutina: 0);
+    }
+  }
+
   // --- Ciclo de vida diario ------------------------------------------------
 
   /// Comprueba si ha cambiado el día para reiniciar agua y plan (sección 5).
@@ -148,6 +196,7 @@ class NotificadorApp extends Notifier<EstadoApp> {
       aguaMl: await _almacen.leerAgua(hoy),
       limpiarPlan: true,
       planUsadoHoy: false,
+      limpiarRutinaIA: true,
     );
     return true;
   }

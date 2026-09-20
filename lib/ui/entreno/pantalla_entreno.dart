@@ -113,7 +113,73 @@ class _RutinaDelDia extends ConsumerWidget {
             ocuparAncho: true,
             onPressed: () => ref.read(entrenoProvider.notifier).empezar(rutina),
           ),
+          const SizedBox(height: Espacio.m),
+          const _RutinaPorIA(),
         ],
+      ),
+    );
+  }
+}
+
+/// Botón para pedirle a la IA local otra rutina, y el indicador mientras la
+/// genera. La rutina en sí (no solo el texto) la decide el modelo cuando hay
+/// uno cargado; sin modelo, Entreno sigue con el catálogo fijo de siempre.
+class _RutinaPorIA extends ConsumerWidget {
+  const _RutinaPorIA();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final estado = ref.watch(estadoAppProvider);
+    final notificador = ref.read(estadoAppProvider.notifier);
+
+    if (estado.generandoRutina) {
+      return _GenerandoRutina(actual: estado.pasoGeneracionRutina);
+    }
+
+    final hayRutinaIA = estado.rutinaIA != null;
+    return BotonVitalis(
+      texto: hayRutinaIA ? 'Regenerar con IA' : 'Generar con IA',
+      nombreAccesible: hayRutinaIA
+          ? 'Pedirle a la IA otra rutina distinta'
+          : 'Pedirle a la IA una rutina de ejercicios para hoy',
+      ocuparAncho: true,
+      onPressed: () => notificador.generarRutinaIA(regenerar: hayRutinaIA),
+    );
+  }
+}
+
+/// Barra de progreso con los pasos de generación (RF-15), mismo patrón que
+/// el plan de comidas en Dieta.
+class _GenerandoRutina extends StatelessWidget {
+  const _GenerandoRutina({required this.actual});
+
+  final int actual;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final pasos = pasosDeGeneracionRutina;
+    final progreso = pasos.isEmpty ? 0.0 : (actual + 1) / pasos.length;
+    final texto = actual < pasos.length ? pasos[actual] : 'Terminando';
+
+    return TarjetaVitalis(
+      child: Semantics(
+        liveRegion: true,
+        label: 'Generando rutina con IA. $texto.',
+        excludeSemantics: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Generando con IA', style: tema.textTheme.titleSmall),
+            const SizedBox(height: Espacio.m),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(radioPildora),
+              child: LinearProgressIndicator(value: progreso, minHeight: 6),
+            ),
+            const SizedBox(height: Espacio.m),
+            Text(texto, style: tema.textTheme.bodySmall),
+          ],
+        ),
       ),
     );
   }

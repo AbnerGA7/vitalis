@@ -5,6 +5,8 @@ import 'package:vitalis/dominio/logica/hidratacion.dart';
 import 'package:vitalis/dominio/modelos/enums.dart';
 import 'package:vitalis/dominio/modelos/perfil.dart';
 import 'package:vitalis/estado/notificador_app.dart';
+import 'package:vitalis/estado/proveedores.dart';
+import 'package:vitalis/servicios/contratos/contratos.dart';
 
 import '../dobles/entorno.dart';
 
@@ -130,5 +132,55 @@ void main() {
     expect(estado.plan, isNull);
     expect(estado.preferencias.onboardingCompletado, isFalse);
     expect(entorno.almacen.perfil, isNull);
+  });
+
+  test(
+      'generarRutinaIA guarda la rutina que propone el modelo cuando hay uno '
+      'listo', () async {
+    final entorno = Entorno(estadoModeloIA: EstadoModeloIA.listo);
+    entorno.generadorContenidoIA.respuesta = '''
+      {
+        "nombre": "Piernas y core en silla",
+        "duracionMin": 12,
+        "material": "Silla",
+        "impacto": "bajo",
+        "porque": "Trabaja piernas y abdomen sin salir de la silla.",
+        "notaAdaptacion": "Todo se hace sentada.",
+        "pasos": [
+          {"tipo": "trabajo", "nombre": "Sentadilla en silla",
+           "detalle": "Arriba y abajo", "duracionS": 30,
+           "indicacion": "Empuja con los talones."},
+          {"tipo": "descanso", "nombre": "Descanso",
+           "detalle": "Respira", "duracionS": 15,
+           "indicacion": "Respira hondo."}
+        ]
+      }
+    ''';
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(estadoAppProvider.notifier);
+
+    await notificador.generarRutinaIA();
+
+    final estado = contenedor.read(estadoAppProvider);
+    expect(estado.rutinaIA?.nombre, 'Piernas y core en silla');
+    expect(estado.generandoRutina, isFalse);
+    expect(contenedor.read(rutinaDelDiaProvider).nombre,
+        'Piernas y core en silla');
+    expect(entorno.almacen.rutinasIA, isNotEmpty);
+  });
+
+  test(
+      'generarRutinaIA sin modelo listo deja rutinaIA vacío y Entreno sigue '
+      'con el catálogo', () async {
+    final entorno = Entorno();
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(estadoAppProvider.notifier);
+
+    await notificador.generarRutinaIA();
+
+    final estado = contenedor.read(estadoAppProvider);
+    expect(estado.rutinaIA, isNull);
+    expect(estado.generandoRutina, isFalse);
+    expect(contenedor.read(rutinaDelDiaProvider), isNotNull);
   });
 }

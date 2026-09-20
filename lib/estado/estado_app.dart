@@ -10,6 +10,7 @@ import '../dominio/logica/proteina.dart';
 import '../dominio/modelos/enums.dart';
 import '../dominio/modelos/perfil.dart';
 import '../dominio/modelos/plan_comidas.dart';
+import '../dominio/modelos/rutina.dart';
 
 class EstadoApp {
   const EstadoApp({
@@ -21,6 +22,9 @@ class EstadoApp {
     this.aguaMl = 0,
     this.generandoPlan = false,
     this.pasoGeneracion = 0,
+    this.rutinaIA,
+    this.generandoRutina = false,
+    this.pasoGeneracionRutina = 0,
   });
 
   final Perfil perfil;
@@ -39,6 +43,15 @@ class EstadoApp {
   /// Estado «pensando/generando» de Dieta (RF-15).
   final bool generandoPlan;
   final int pasoGeneracion;
+
+  /// Rutina de hoy generada por IA, si la hay. `null` cuando todavía no se ha
+  /// pedido una o cuando falló: en ese caso Entreno cae al catálogo fijo
+  /// (sección 4.5).
+  final Rutina? rutinaIA;
+
+  /// Estado «pensando/generando» de Entreno, mismo patrón que Dieta.
+  final bool generandoRutina;
+  final int pasoGeneracionRutina;
 
   /// Proteína objetivo derivada del peso y la tasa (RF-20, RF-51).
   int get proteinaObjetivo =>
@@ -78,6 +91,10 @@ class EstadoApp {
     int? aguaMl,
     bool? generandoPlan,
     int? pasoGeneracion,
+    Rutina? rutinaIA,
+    bool limpiarRutinaIA = false,
+    bool? generandoRutina,
+    int? pasoGeneracionRutina,
   }) =>
       EstadoApp(
         perfil: perfil ?? this.perfil,
@@ -88,6 +105,10 @@ class EstadoApp {
         aguaMl: aguaMl ?? this.aguaMl,
         generandoPlan: generandoPlan ?? this.generandoPlan,
         pasoGeneracion: pasoGeneracion ?? this.pasoGeneracion,
+        rutinaIA: limpiarRutinaIA ? null : (rutinaIA ?? this.rutinaIA),
+        generandoRutina: generandoRutina ?? this.generandoRutina,
+        pasoGeneracionRutina:
+            pasoGeneracionRutina ?? this.pasoGeneracionRutina,
       );
 }
 

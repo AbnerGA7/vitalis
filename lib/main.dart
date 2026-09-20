@@ -44,6 +44,10 @@ Future<void> main() async {
       ? planGuardado
       : null;
 
+  // La rutina generada por IA también es diaria (leerRutinaIA ya filtra por
+  // día, sección 4.5).
+  final rutinaIA = await almacen.leerRutinaIA(hoy);
+
   // Si en una sesión anterior se cambió al modelo empaquetado por otro
   // descargado por URL (vía avanzada en Perfil), se restaura ese en vez del
   // que trae la app (ADR-03).
@@ -70,6 +74,7 @@ Future<void> main() async {
             dia: hoy,
             plan: plan,
             aguaMl: agua,
+            rutinaIA: rutinaIA,
           ),
         ),
       ],
