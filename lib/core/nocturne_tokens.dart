@@ -23,28 +23,28 @@ class PaletaNocturne {
 
   /// Tema oscuro, el de partida y de mayor contraste (RNF-03, RNF-07).
   static const PaletaNocturne oscuro = PaletaNocturne(
-    fondo: Color(0xFF161826),
-    superficie: Color(0xFF1E2033),
-    superficieAlta: Color(0xFF272A41),
-    texto: Color(0xFFE9E9ED),
-    textoSuave: Color(0xFFB4B5C4),
-    borde: Color(0xFF343753),
-    acento: Color(0xFF9184D9),
-    acentoSuave: Color(0xFF2A2744),
-    tintaSobreAcento: Color(0xFF161826),
+    fondo: Color(0xFF121A2E),
+    superficie: Color(0xFF1B2540),
+    superficieAlta: Color(0xFF24315A),
+    texto: Color(0xFFECEFF9),
+    textoSuave: Color(0xFFAEB6CE),
+    borde: Color(0xFF30406B),
+    acento: Color(0xFF6FA8FF),
+    acentoSuave: Color(0xFF1E3157),
+    tintaSobreAcento: Color(0xFF0E1830),
   );
 
   /// Tema claro: mismos tokens, rampas invertidas.
   static const PaletaNocturne claro = PaletaNocturne(
-    fondo: Color(0xFFF3F5FE),
-    superficie: Color(0xFFFFFFFE),
-    superficieAlta: Color(0xFFEAECFA),
-    texto: Color(0xFF161826),
-    textoSuave: Color(0xFF4A4C63),
-    borde: Color(0xFFD4D7EC),
-    acento: Color(0xFF5D5294),
-    acentoSuave: Color(0xFFE6E3F5),
-    tintaSobreAcento: Color(0xFFFFFFFE),
+    fondo: Color(0xFFF1F5FE),
+    superficie: Color(0xFFFFFFFF),
+    superficieAlta: Color(0xFFE6EDFB),
+    texto: Color(0xFF121A2E),
+    textoSuave: Color(0xFF4B5875),
+    borde: Color(0xFFCFDBF2),
+    acento: Color(0xFF2F62D6),
+    acentoSuave: Color(0xFFE2EAFC),
+    tintaSobreAcento: Color(0xFFFFFFFF),
   );
 
   final Color fondo;
