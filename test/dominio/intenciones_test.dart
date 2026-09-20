@@ -60,6 +60,19 @@ void main() {
     expect(clasificarIntencion('   '), Intencion.desconocida);
   });
 
+  test(
+      'contar lo que se ha comido no dispara la plantilla fija del plan '
+      '(evita el bucle de respuestas repetidas)', () {
+    for (final frase in [
+      'hoy comí pollo con arroz y palta',
+      'ya me comí toda la merienda',
+      'mi dieta de hoy fue bastante rica',
+      'no sé si me faltó proteína hoy',
+    ]) {
+      expect(clasificarIntencion(frase), Intencion.desconocida, reason: frase);
+    }
+  });
+
   test('ofrece exactamente tres ejemplos al no entender (RF-12)', () {
     expect(ejemplosSugeridos, hasLength(3));
     expect(sugerenciasInicio, hasLength(3));

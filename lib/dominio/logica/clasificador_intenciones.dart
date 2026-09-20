@@ -19,6 +19,30 @@ const Map<Intencion, List<String>> _palabrasClave = {
   ],
 };
 
+/// Verbos que delatan una petición explícita («dame mi plan»), a diferencia
+/// de una frase informativa («hoy comí pollo con arroz»). Se exigen para el
+/// grupo `plan`, el más propenso a aparecer en charla libre sobre comida: sin
+/// esto, contarle al asistente lo que has comido disparaba siempre la misma
+/// plantilla fija en vez de dejar que la conversación libre lo entendiera.
+const List<String> _verbosPeticion = [
+  'dame',
+  'apunta',
+  'anota',
+  'registra',
+  'dime',
+  'cuanto',
+  'cuanta',
+  'necesito',
+  'quiero',
+  'generame',
+  'hazme',
+  'muestrame',
+  'pon',
+  'empieza',
+  'comienza',
+  'toca',
+];
+
 /// Quita acentos y pasa a minúsculas para que «proteína» y «proteina» coincidan.
 String normalizar(String texto) {
   const con = 'áàäâéèëêíìïîóòöôúùüûñçÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛÑÇ';
@@ -51,6 +75,15 @@ Intencion clasificarIntencion(String texto) {
         mejor = entrada.key;
       }
     }
+  }
+
+  if (mejor == Intencion.plan) {
+    // Una sola palabra («proteína», «dieta») es una consulta directa, no una
+    // frase informativa: no hace falta verbo. A partir de dos palabras, sí.
+    final unaSolaPalabra =
+        normalizado.trim().split(RegExp(r'\s+')).length <= 1;
+    final tienePeticion = _verbosPeticion.any(normalizado.contains);
+    if (!unaSolaPalabra && !tienePeticion) return Intencion.desconocida;
   }
   return mejor;
 }
