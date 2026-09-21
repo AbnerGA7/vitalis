@@ -1,4 +1,6 @@
 // Perfil, preferencias y acumulación de necesidades. RF-50, RF-62, sección 5.
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vitalis/dominio/modelos/enums.dart';
 import 'package:vitalis/dominio/modelos/perfil.dart';
@@ -59,5 +61,32 @@ void main() {
     expect(copia.necesidades, {Necesidad.bajaVision});
     expect(copia.tema, TemaApp.claro);
     expect(copia.onboardingCompletado, isTrue);
+  });
+
+  test('gustos y exclusiones sobreviven al guardado real (jsonEncode/Decode)',
+      () {
+    final perfil = Perfil.inicial().copiarCon(
+      comidasFavoritas: const ['pollo', 'palta'],
+      ingredientesEvitar: const ['tomate', 'cebolla'],
+    );
+
+    // almacen_prefs.dart guarda con jsonEncode y lee con jsonDecode, no solo
+    // con el mapa en memoria: sin pasar por ahí no se detectaría un cast que
+    // solo falla con la List<dynamic> real que produce jsonDecode.
+    final decodificado =
+        jsonDecode(jsonEncode(perfil.aJson())) as Map<String, Object?>;
+    final copia = Perfil.desdeJson(decodificado);
+
+    expect(copia.comidasFavoritas, ['pollo', 'palta']);
+    expect(copia.ingredientesEvitar, ['tomate', 'cebolla']);
+  });
+
+  test('un perfil guardado antes de este campo no rompe la lectura', () {
+    final json = Perfil.inicial().aJson()
+      ..remove('comidasFavoritas')
+      ..remove('ingredientesEvitar');
+    final perfil = Perfil.desdeJson(json);
+    expect(perfil.comidasFavoritas, isEmpty);
+    expect(perfil.ingredientesEvitar, isEmpty);
   });
 }

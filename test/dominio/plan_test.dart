@@ -154,5 +154,77 @@ void main() {
       expect(copia.comidas.first.plato, plan.comidas.first.plato);
       expect(copia.preferencia, PreferenciaDieta.sinLactosa);
     });
+
+    group('gustos y exclusiones (sección 4.3)', () {
+      test('una favorita que solo coincide con un plato de la franja gana '
+          'siempre', () {
+        for (var semilla = 0; semilla < 8; semilla++) {
+          final plan = generarPlanDelDia(
+            pesoKg: 70,
+            tasa: TasaProteina.fuerza,
+            preferencia: PreferenciaDieta.mixta,
+            fecha: fecha,
+            semilla: semilla,
+            comidasFavoritas: const ['pescado'],
+          );
+          expect(plan.comidas[1].plato, 'Pescado sudado con yuca');
+        }
+      });
+
+      test('un ingrediente a evitar nunca aparece si hay alternativa', () {
+        for (var semilla = 0; semilla < 8; semilla++) {
+          final plan = generarPlanDelDia(
+            pesoKg: 70,
+            tasa: TasaProteina.fuerza,
+            preferencia: PreferenciaDieta.mixta,
+            fecha: fecha,
+            semilla: semilla,
+            ingredientesEvitar: const ['pollo'],
+          );
+          expect(plan.comidas[0].plato, isNot('Tamal de pollo'));
+        }
+      });
+
+      test('no distingue mayúsculas ni acentos al comparar', () {
+        final plan = generarPlanDelDia(
+          pesoKg: 70,
+          tasa: TasaProteina.fuerza,
+          preferencia: PreferenciaDieta.mixta,
+          fecha: fecha,
+          comidasFavoritas: const ['PESCADO'],
+        );
+        expect(plan.comidas[1].plato, 'Pescado sudado con yuca');
+      });
+
+      test('si evitar dejaría una franja sin opciones, se ignora el filtro '
+          'en vez de romper el plan', () {
+        // Las tres opciones de la tercera franja de "mixta" mencionan, entre
+        // todas, estas tres palabras: si se evitan a la vez no debería quedar
+        // ninguna opción, pero el plan igual debe generarse sin errores.
+        expect(
+          () => generarPlanDelDia(
+            pesoKg: 70,
+            tasa: TasaProteina.fuerza,
+            preferencia: PreferenciaDieta.mixta,
+            fecha: fecha,
+            ingredientesEvitar: const ['quinua pop', 'atun', 'queso fresco'],
+          ),
+          returnsNormally,
+        );
+      });
+
+      test('sin coincidencias, favoritas y evitar no cambian el objetivo '
+          'de proteína', () {
+        final plan = generarPlanDelDia(
+          pesoKg: 70,
+          tasa: TasaProteina.fuerza,
+          preferencia: PreferenciaDieta.mixta,
+          fecha: fecha,
+          comidasFavoritas: const ['algo que no está en el catálogo'],
+          ingredientesEvitar: const ['tampoco esto'],
+        );
+        expect(plan.objetivoProteinaG, 112);
+      });
+    });
   });
 }

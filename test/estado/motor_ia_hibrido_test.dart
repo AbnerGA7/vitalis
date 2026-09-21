@@ -95,6 +95,50 @@ void main() {
         closeTo(112, 1));
   });
 
+  test('el pedido de recetas a la IA incluye gustos y exclusiones',
+      () async {
+    gestor.estado = EstadoModeloIA.listo;
+
+    await hibrido.generarPlan(
+      pesoKg: 70,
+      tasa: TasaProteina.fuerza,
+      preferencia: PreferenciaDieta.mixta,
+      comidasFavoritas: const ['pollo', 'palta'],
+      ingredientesEvitar: const ['camarón'],
+    );
+
+    final peticion = generador.peticionesRecibidas.single;
+    expect(peticion, contains('pollo, palta'));
+    expect(peticion, contains('camarón'));
+  });
+
+  test(
+      'si algún plato propuesto por la IA menciona un ingrediente vetado, '
+      'se descarta todo el lote y cae al catálogo', () async {
+    gestor.estado = EstadoModeloIA.listo;
+    generador.respuesta = '''
+      [
+        {"nombre": "Ceviche con camarón", "ingredientes": ["pescado", "camarón"]},
+        {"nombre": "Plato inventado 2", "ingredientes": ["ingrediente 2"]},
+        {"nombre": "Plato inventado 3", "ingredientes": ["ingrediente 3"]},
+        {"nombre": "Plato inventado 4", "ingredientes": ["ingrediente 4"]}
+      ]
+    ''';
+
+    final plan = await hibrido.generarPlan(
+      pesoKg: 70,
+      tasa: TasaProteina.fuerza,
+      preferencia: PreferenciaDieta.mixta,
+      ingredientesEvitar: const ['camarón'],
+    );
+
+    expect(plan.objetivoProteinaG, 112);
+    expect(plan.comidas, hasLength(4));
+    final platos = plan.comidas.map((c) => c.plato);
+    expect(platos, isNot(contains('Ceviche con camarón')));
+    expect(platos, isNot(contains('Plato inventado 2')));
+  });
+
   test('si la IA devuelve algo inválido, generarPlan cae al catálogo', () async {
     gestor.estado = EstadoModeloIA.listo;
     generador.respuesta = 'esto no es JSON';

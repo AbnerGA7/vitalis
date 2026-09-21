@@ -48,6 +48,40 @@ void main() {
     expect(contenedor.read(estadoAppProvider).planVigente, isFalse);
   });
 
+  test(
+      'cambiar gustos separa el texto libre en etiquetas y conserva el '
+      'plan en uso', () async {
+    final entorno = Entorno();
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(estadoAppProvider.notifier);
+
+    await notificador.generarPlan();
+    notificador.usarPlanEnElDia();
+    expect(contenedor.read(estadoAppProvider).planUsadoHoy, isTrue);
+
+    await notificador.cambiarComidasFavoritas('pollo, palta y quinua');
+
+    final estado = contenedor.read(estadoAppProvider);
+    expect(estado.perfil.comidasFavoritas, ['pollo', 'palta', 'quinua']);
+    expect(estado.planUsadoHoy, isTrue);
+    expect(entorno.almacen.perfil?.comidasFavoritas,
+        ['pollo', 'palta', 'quinua']);
+  });
+
+  test('cambiar ingredientes a evitar admite comas, punto y coma y saltos '
+      'de línea', () async {
+    final entorno = Entorno();
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(estadoAppProvider.notifier);
+
+    await notificador.cambiarIngredientesEvitar('tomate; cebolla\nají');
+
+    expect(
+      contenedor.read(estadoAppProvider).perfil.ingredientesEvitar,
+      ['tomate', 'cebolla', 'ají'],
+    );
+  });
+
   test('el objetivo arrastra la tasa y se puede ajustar después', () async {
     final entorno = Entorno();
     final contenedor = entorno.contenedor();
