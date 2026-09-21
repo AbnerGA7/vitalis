@@ -108,10 +108,28 @@ class Perfil {
       );
 }
 
-/// Lee una lista de cadenas de un JSON decodificado, tolerando que la clave
-/// no exista (perfil guardado antes de este campo).
-List<String> _listaDeJson(Object? valor) =>
-    (valor as List<Object?>?)?.map((e) => e as String).toList() ?? const [];
+/// Separador usado antes de que estos campos fueran listas: comas, punto y
+/// coma, saltos de línea o un «y» suelto («pollo, palta y quinua»).
+final RegExp _separadorEtiquetasLegado = RegExp(r'[,;\n]+|\by\b', caseSensitive: false);
+
+/// Lee una lista de cadenas de un JSON decodificado.
+///
+/// Tolera dos versiones anteriores del dato: la clave puede no existir
+/// (perfil guardado antes de que existiera este campo) o puede ser un texto
+/// libre en vez de una lista (perfil guardado cuando el campo todavía era
+/// `String`, antes de esta sección): sin este segundo caso, `as List<Object?>`
+/// lanzaría al leer un perfil real guardado con esa versión anterior.
+List<String> _listaDeJson(Object? valor) {
+  if (valor is String) {
+    return valor
+        .split(_separadorEtiquetasLegado)
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+  }
+  return (valor as List<Object?>?)?.map((e) => e as String).toList() ??
+      const [];
+}
 
 /// Unidades, tema, necesidades y estado del onboarding.
 class Preferencias {

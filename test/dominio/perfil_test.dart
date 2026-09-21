@@ -89,4 +89,20 @@ void main() {
     expect(perfil.comidasFavoritas, isEmpty);
     expect(perfil.ingredientesEvitar, isEmpty);
   });
+
+  test(
+      'un perfil guardado cuando el campo todavía era texto libre no rompe '
+      'la lectura', () {
+    // Forma real de un perfil escrito por la versión anterior a esta
+    // sección, cuando comidasFavoritas/ingredientesEvitar eran String: sin
+    // este caso en _listaDeJson, `as List<Object?>` lanzaba al leerlo.
+    final json = Perfil.inicial().aJson();
+    json['comidasFavoritas'] = 'pollo, palta y quinua';
+    json['ingredientesEvitar'] = 'tomate; cebolla';
+
+    final perfil = Perfil.desdeJson(json);
+
+    expect(perfil.comidasFavoritas, ['pollo', 'palta', 'quinua']);
+    expect(perfil.ingredientesEvitar, ['tomate', 'cebolla']);
+  });
 }
