@@ -103,6 +103,55 @@ void main() {
     expect(contenedor.read(conversacionProvider).modoVozContinua, isFalse);
   });
 
+  test(
+      'un segundo enviar mientras el primero sigue en curso no arranca su '
+      'propia llamada al modelo', () async {
+    final entorno = Entorno();
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(conversacionProvider.notifier);
+
+    // Sin await entre medias: las dos llamadas arrancan antes de que la
+    // primera llegue a marcar la fase como «pensando» (esa fase se marca
+    // después de un `await`), que es justo la ventana que se quiere cerrar.
+    final primero = notificador.enviar('apunta un vaso de agua');
+    final segundo = notificador.enviar('¿qué entreno toca hoy?');
+    await primero;
+    await segundo;
+
+    final personas = contenedor
+        .read(conversacionProvider)
+        .mensajes
+        .where((m) => m.autor.name == 'persona')
+        .toList();
+    expect(personas, hasLength(1));
+    expect(personas.first.texto, 'apunta un vaso de agua');
+  });
+
+  test('el micro no reabre el dictado mientras el asistente sigue pensando',
+      () async {
+    final entorno = Entorno();
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(conversacionProvider.notifier);
+
+    final envio = notificador.enviar('apunta un vaso de agua');
+    // 0 ms sobra para dejar pasar el `await detenerDictado()` inicial: el
+    // paso siguiente espera pausaEntrePasosGeneracion (320 ms) de verdad.
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      contenedor.read(conversacionProvider).fase,
+      FaseAsistente.pensando,
+    );
+
+    await notificador.iniciarDictado();
+    expect(contenedor.read(conversacionProvider).escuchando, isFalse);
+
+    await envio;
+    expect(
+      contenedor.read(conversacionProvider).fase,
+      FaseAsistente.respondido,
+    );
+  });
+
   test('vaciar la conversación también reinicia la memoria del modelo real',
       () async {
     final entorno = Entorno(estadoModeloIA: EstadoModeloIA.listo);

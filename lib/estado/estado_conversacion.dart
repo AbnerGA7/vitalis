@@ -76,6 +76,15 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
   /// para no escribir en un notificador ya desechado tras un `await`.
   bool _vivo = true;
 
+  /// Cierra la ventana de carrera entre el guard de [enviar] y el momento en
+  /// que `state.fase` pasa de verdad a `pensando`: ese cambio llega después
+  /// de `await detenerDictado()`, así que dos llamadas casi simultáneas (dos
+  /// tramos dictados seguidos, un doble toque en enviar) leían las dos la
+  /// fase todavía en reposo y las dos arrancaban su propia llamada al
+  /// modelo. Se marca en el mismo tick que se hace el guard, antes de
+  /// cualquier `await`.
+  bool _entrandoAPensar = false;
+
   @override
   EstadoConversacion build() {
     ref.onDispose(() => _vivo = false);
@@ -127,17 +136,22 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
     // de la que ya estaba en curso, y como el motor solo sirve una
     // generación a la vez, las siguientes se quedaban esperando en fila
     // detrás de la primera sin que nada volviera a responder.
-    if (state.fase == FaseAsistente.pensando) return;
+    if (state.fase == FaseAsistente.pensando || _entrandoAPensar) return;
+    _entrandoAPensar = true;
 
-    await detenerDictado();
+    try {
+      await detenerDictado();
 
-    state = state.copiarCon(
-      mensajes: [...state.mensajes, Mensaje.persona(contenido)],
-      borrador: '',
-      fase: FaseAsistente.pensando,
-      pasoPensando: 'Entendiendo lo que me pides',
-      limpiarError: true,
-    );
+      state = state.copiarCon(
+        mensajes: [...state.mensajes, Mensaje.persona(contenido)],
+        borrador: '',
+        fase: FaseAsistente.pensando,
+        pasoPensando: 'Entendiendo lo que me pides',
+        limpiarError: true,
+      );
+    } finally {
+      _entrandoAPensar = false;
+    }
     _anunciador.anunciar('Pensando', prioridad: PrioridadAnuncio.cortes);
 
     if (!porVoz) {
@@ -207,6 +221,11 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
       await detenerDictado(porUsuario: true);
       return;
     }
+    // Mientras se está esperando la respuesta, abrir el micro pisaría la fase
+    // `pensando`: cuando la respuesta llegara, el guardado final la volvería
+    // a tapar sin haber cerrado nunca el dictado que se acababa de abrir, y
+    // el micro se quedaría escuchando de verdad sin ninguna señal en pantalla.
+    if (state.fase == FaseAsistente.pensando) return;
     // Vibración al abrir y cerrar el dictado (AC-08).
     await ref.read(hapticoProvider).confirmacion();
 

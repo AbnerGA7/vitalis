@@ -104,16 +104,25 @@ class _BotonMicro extends ConsumerWidget {
     final paleta = context.paleta;
     final escuchando =
         ref.watch(conversacionProvider.select((e) => e.escuchando));
+    // Mientras se espera la respuesta no se abre el micro (ver
+    // NotificadorConversacion.iniciarDictado): deshabilitarlo aquí evita
+    // además un toque que no hace nada visible.
+    final pensando = ref.watch(
+      conversacionProvider.select((e) => e.fase == FaseAsistente.pensando),
+    );
 
     return Semantics(
       button: true,
+      enabled: !pensando,
       label: escuchando ? 'Detener el dictado' : 'Dictar por voz',
       excludeSemantics: true,
       child: SizedBox(
         width: areaMicro,
         height: areaMicro,
         child: IconButton(
-          onPressed: ref.read(conversacionProvider.notifier).iniciarDictado,
+          onPressed: pensando
+              ? null
+              : ref.read(conversacionProvider.notifier).iniciarDictado,
           icon: Icon(escuchando ? Icons.stop : Icons.mic_none),
           style: IconButton.styleFrom(
             shape: const CircleBorder(),
