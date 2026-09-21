@@ -120,8 +120,8 @@ class _PreferenciasComidaState extends ConsumerState<_PreferenciasComida> {
   void initState() {
     super.initState();
     final perfil = ref.read(estadoAppProvider).perfil;
-    _favoritas = TextEditingController(text: perfil.comidasFavoritas);
-    _evitar = TextEditingController(text: perfil.ingredientesEvitar);
+    _favoritas = TextEditingController(text: perfil.comidasFavoritas.join(', '));
+    _evitar = TextEditingController(text: perfil.ingredientesEvitar.join(', '));
     _focoFavoritas.addListener(_alPerderFocoFavoritas);
     _focoEvitar.addListener(_alPerderFocoEvitar);
   }
@@ -167,8 +167,16 @@ class _PreferenciasComidaState extends ConsumerState<_PreferenciasComida> {
     final perfil = ref.watch(
       estadoAppProvider.select((estado) => estado.perfil),
     );
-    _sincronizarSiHaceFalta(_favoritas, _focoFavoritas, perfil.comidasFavoritas);
-    _sincronizarSiHaceFalta(_evitar, _focoEvitar, perfil.ingredientesEvitar);
+    _sincronizarSiHaceFalta(
+      _favoritas,
+      _focoFavoritas,
+      perfil.comidasFavoritas.join(', '),
+    );
+    _sincronizarSiHaceFalta(
+      _evitar,
+      _focoEvitar,
+      perfil.ingredientesEvitar.join(', '),
+    );
 
     return TarjetaVitalis(
       child: Column(

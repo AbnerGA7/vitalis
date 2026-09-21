@@ -111,8 +111,8 @@ class ContextoAsistente {
     required this.preferencia,
     required this.aguaMl,
     required this.nombreRutina,
-    this.comidasFavoritas = '',
-    this.ingredientesEvitar = '',
+    this.comidasFavoritas = const [],
+    this.ingredientesEvitar = const [],
   });
 
   final double pesoKg;
@@ -121,11 +121,11 @@ class ContextoAsistente {
   final int aguaMl;
   final String nombreRutina;
 
-  /// Mismo texto libre que [Perfil.comidasFavoritas] / [Perfil.ingredientesEvitar]:
-  /// se arrastra hasta aquí para que pedir el plan por chat («dame mi
+  /// Mismas listas que [Perfil.comidasFavoritas] / [Perfil.ingredientesEvitar]:
+  /// se arrastran hasta aquí para que pedir el plan por chat («dame mi
   /// plan») lo respete igual que pedirlo desde Dieta.
-  final String comidasFavoritas;
-  final String ingredientesEvitar;
+  final List<String> comidasFavoritas;
+  final List<String> ingredientesEvitar;
 }
 
 /// Respuesta del asistente: texto más la carga que pinta la tarjeta (RF-13).
@@ -157,16 +157,15 @@ abstract interface class MotorIA {
   /// Siempre por fórmula, nunca por el modelo conversacional: la proteína y
   /// las kcal son datos, no algo que un LLM deba inventar (sección 4.3).
   ///
-  /// [comidasFavoritas] e [ingredientesEvitar] son texto libre separado por
-  /// comas (sección 4.3): sesgan qué platos salen, nunca cuánta proteína
-  /// hace falta.
+  /// [comidasFavoritas] e [ingredientesEvitar] (sección 4.3): sesgan qué
+  /// platos salen, nunca cuánta proteína hace falta.
   Future<PlanComidas> generarPlan({
     required double pesoKg,
     required TasaProteina tasa,
     required PreferenciaDieta preferencia,
     int semilla,
-    String comidasFavoritas,
-    String ingredientesEvitar,
+    List<String> comidasFavoritas,
+    List<String> ingredientesEvitar,
   });
 
   /// Responde a lo que ha dicho o escrito la persona (RF-12, RF-13).

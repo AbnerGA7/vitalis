@@ -39,8 +39,8 @@ class MotorIALocal implements MotorIA {
     required TasaProteina tasa,
     required PreferenciaDieta preferencia,
     int semilla = 0,
-    String comidasFavoritas = '',
-    String ingredientesEvitar = '',
+    List<String> comidasFavoritas = const [],
+    List<String> ingredientesEvitar = const [],
   }) async =>
       generarPlanDelDia(
         pesoKg: pesoKg,

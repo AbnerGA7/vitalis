@@ -90,11 +90,11 @@ String _instruccionGeneradorRecetas() =>
 
 String _peticionRecetas(
   PreferenciaDieta preferencia, {
-  String comidasFavoritas = '',
-  String ingredientesEvitar = '',
+  List<String> comidasFavoritas = const [],
+  List<String> ingredientesEvitar = const [],
 }) {
-  final favoritas = comidasFavoritas.trim();
-  final evitar = ingredientesEvitar.trim();
+  final favoritas = comidasFavoritas.join(', ');
+  final evitar = ingredientesEvitar.join(', ');
   return 'Propón 4 platos peruanos, uno para cada una de estas franjas en '
       'este orden: ${nombresFranjas.join(', ')}. La dieta es '
       '"${preferencia.etiqueta}". '
@@ -145,14 +145,10 @@ List<PlatoBase>? _parsearPlatosGenerados(String? crudo) {
 /// ingredientes) alguna palabra de [ingredientesEvitar].
 bool _algunPlatoTieneIngredienteEvitado(
   List<PlatoBase> platos,
-  String ingredientesEvitar,
+  List<String> ingredientesEvitar,
 ) {
-  final palabras = normalizar(ingredientesEvitar)
-      .split(RegExp(r'[,;\n]+|\by\b'))
-      .map((p) => p.trim())
-      .where((p) => p.isNotEmpty)
-      .toList();
-  if (palabras.isEmpty) return false;
+  if (ingredientesEvitar.isEmpty) return false;
+  final palabras = ingredientesEvitar.map(normalizar).toList();
   return platos.any((plato) {
     final texto = normalizar('${plato.nombre} ${plato.ingredientes.join(' ')}');
     return palabras.any(texto.contains);
@@ -216,8 +212,8 @@ class MotorIAHibrido implements MotorIA {
     required TasaProteina tasa,
     required PreferenciaDieta preferencia,
     int semilla = 0,
-    String comidasFavoritas = '',
-    String ingredientesEvitar = '',
+    List<String> comidasFavoritas = const [],
+    List<String> ingredientesEvitar = const [],
   }) async {
     final generados = conversacionDisponible
         ? _parsearPlatosGenerados(

@@ -25,8 +25,8 @@ class Perfil {
     required this.objetivo,
     required this.tasaProteina,
     required this.preferenciaDieta,
-    this.comidasFavoritas = '',
-    this.ingredientesEvitar = '',
+    this.comidasFavoritas = const [],
+    this.ingredientesEvitar = const [],
   });
 
   /// Perfil de arranque antes del onboarding.
@@ -48,18 +48,18 @@ class Perfil {
 
   final PreferenciaDieta preferenciaDieta;
 
-  /// Comidas o ingredientes que le gustan a la persona, texto libre separado
-  /// por comas (p. ej. «pollo, palta, quinua»). Sesga los platos del
-  /// catálogo hacia esas coincidencias y se incluye en el pedido a la IA al
-  /// generar recetas (sección 4.3). Nunca cambia la proteína objetivo.
-  final String comidasFavoritas;
+  /// Comidas o ingredientes que le gustan a la persona, uno por etiqueta
+  /// (p. ej. «pollo», «palta», «quinua»). Sesga los platos del catálogo
+  /// hacia esas coincidencias y se incluye en el pedido a la IA al generar
+  /// recetas (sección 4.3). Nunca cambia la proteína objetivo.
+  final List<String> comidasFavoritas;
 
-  /// Ingredientes que la persona no quiere ver en sus comidas (p. ej.
-  /// «tomate, cebolla»), mismo formato que [comidasFavoritas]. Excluye del
-  /// catálogo los platos que los contengan (si eso deja alguna franja sin
-  /// opciones, esa franja ignora el filtro para no dejar la comida vacía) y
-  /// se lo pide también a la IA al generar recetas.
-  final String ingredientesEvitar;
+  /// Ingredientes que la persona no quiere ver en sus comidas, mismo formato
+  /// que [comidasFavoritas]. Excluye del catálogo los platos que los
+  /// contengan (si eso deja alguna franja sin opciones, esa franja ignora el
+  /// filtro para no dejar la comida vacía) y se lo pide también a la IA al
+  /// generar recetas.
+  final List<String> ingredientesEvitar;
 
   Perfil copiarCon({
     double? pesoKg,
@@ -67,8 +67,8 @@ class Perfil {
     Objetivo? objetivo,
     TasaProteina? tasaProteina,
     PreferenciaDieta? preferenciaDieta,
-    String? comidasFavoritas,
-    String? ingredientesEvitar,
+    List<String>? comidasFavoritas,
+    List<String>? ingredientesEvitar,
   }) =>
       Perfil(
         pesoKg: pesoKg ?? this.pesoKg,
@@ -101,12 +101,17 @@ class Perfil {
         tasaProteina: TasaProteina.values.byName(json['tasaProteina'] as String),
         preferenciaDieta:
             PreferenciaDieta.values.byName(json['preferenciaDieta'] as String),
-        // `as String? ?? ''`: perfiles guardados antes de este campo no lo
-        // tienen, y no debe romper la lectura de un perfil ya existente.
-        comidasFavoritas: json['comidasFavoritas'] as String? ?? '',
-        ingredientesEvitar: json['ingredientesEvitar'] as String? ?? '',
+        // Perfiles guardados antes de este campo no lo tienen: `?? const []`
+        // no debe romper la lectura de un perfil ya existente.
+        comidasFavoritas: _listaDeJson(json['comidasFavoritas']),
+        ingredientesEvitar: _listaDeJson(json['ingredientesEvitar']),
       );
 }
+
+/// Lee una lista de cadenas de un JSON decodificado, tolerando que la clave
+/// no exista (perfil guardado antes de este campo).
+List<String> _listaDeJson(Object? valor) =>
+    (valor as List<Object?>?)?.map((e) => e as String).toList() ?? const [];
 
 /// Unidades, tema, necesidades y estado del onboarding.
 class Preferencias {

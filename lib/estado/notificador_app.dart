@@ -81,12 +81,12 @@ class NotificadorApp extends Notifier<EstadoApp> {
   /// que a diferencia de [cambiarPreferenciaDieta] no invalida el plan del
   /// día (`planUsadoHoy` se conserva).
   Future<void> cambiarComidasFavoritas(String texto) => _guardarPerfilPreservandoPlan(
-        state.perfil.copiarCon(comidasFavoritas: texto),
+        state.perfil.copiarCon(comidasFavoritas: _etiquetasDesdeTexto(texto)),
       );
 
   /// Ingredientes que la persona no quiere ver en sus comidas (sección 4.3).
   Future<void> cambiarIngredientesEvitar(String texto) => _guardarPerfilPreservandoPlan(
-        state.perfil.copiarCon(ingredientesEvitar: texto),
+        state.perfil.copiarCon(ingredientesEvitar: _etiquetasDesdeTexto(texto)),
       );
 
   Future<void> cambiarUnidades(Unidades unidades) =>
@@ -270,6 +270,16 @@ class NotificadorApp extends Notifier<EstadoApp> {
 /// Alias para no tapar el método del notificador con la función del dominio.
 int registrarAguaDelDia({required int actualMl, required int incrementoMl}) =>
     registrarAgua(actualMl: actualMl, incrementoMl: incrementoMl);
+
+/// Separa el texto libre de un campo de gustos/exclusiones («pollo, palta y
+/// quinua») en etiquetas sueltas, conservando cómo las escribió la persona:
+/// la normalización para comparar (sin acentos ni mayúsculas) ocurre más
+/// tarde, al usarlas (generador_plan.dart, motor_ia_hibrido.dart).
+List<String> _etiquetasDesdeTexto(String texto) => texto
+    .split(RegExp(r'[,;\n]+|\by\b', caseSensitive: false))
+    .map((p) => p.trim())
+    .where((p) => p.isNotEmpty)
+    .toList();
 
 final estadoAppProvider =
     NotifierProvider<NotificadorApp, EstadoApp>(NotificadorApp.new);

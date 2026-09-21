@@ -31,14 +31,14 @@ PlanComidas generarPlanDelDia({
   required PreferenciaDieta preferencia,
   required DateTime fecha,
   int semilla = 0,
-  String comidasFavoritas = '',
-  String ingredientesEvitar = '',
+  List<String> comidasFavoritas = const [],
+  List<String> ingredientesEvitar = const [],
 }) {
   final objetivo = proteinaObjetivoG(pesoKg: pesoKg, tasa: tasa);
   final catalogo = catalogoPlatos[preferencia]!;
   final azar = Random(semilla);
-  final favoritas = _palabrasDePreferencia(comidasFavoritas);
-  final evitar = _palabrasDePreferencia(ingredientesEvitar);
+  final favoritas = comidasFavoritas.map(normalizar).toList();
+  final evitar = ingredientesEvitar.map(normalizar).toList();
 
   final comidas = <Comida>[];
   for (var i = 0; i < repartoProteina.length; i++) {
@@ -69,14 +69,6 @@ PlanComidas generarPlanDelDia({
     ),
   );
 }
-
-/// Separa un texto libre («pollo, palta y quinua») en palabras sueltas,
-/// normalizadas para comparar sin acentos ni mayúsculas.
-List<String> _palabrasDePreferencia(String texto) => normalizar(texto)
-    .split(RegExp(r'[,;\n]+|\by\b'))
-    .map((p) => p.trim())
-    .where((p) => p.isNotEmpty)
-    .toList();
 
 /// Si el nombre o los ingredientes de [plato] contienen alguna de [palabras].
 bool _platoMenciona(PlatoBase plato, List<String> palabras) {
