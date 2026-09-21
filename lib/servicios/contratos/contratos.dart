@@ -210,6 +210,12 @@ enum EstadoModeloIA {
 abstract interface class GestorModeloIA {
   EstadoModeloIA get estado;
 
+  /// Ruta del asset empaquetado o URL de descarga del modelo activo, `null`
+  /// si no hay ninguno instalado. Sirve para que la interfaz muestre cuál es
+  /// el modelo en uso, sobre todo tras cambiarlo por otro descargado por URL
+  /// (Perfil → «IA local» → «Usar otro modelo»).
+  String? get modeloInstalado;
+
   /// Emite cada vez que cambia [estado] (incluidas las actualizaciones de
   /// [progreso] mientras descarga).
   Stream<EstadoModeloIA> get cambiosDeEstado;

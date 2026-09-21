@@ -15,6 +15,7 @@ import '../../core/nocturne_tokens.dart';
 import '../../estado/notificador_app.dart';
 import '../../estado/proveedores.dart';
 import '../../servicios/contratos/contratos.dart';
+import '../../servicios/impl/gestor_modelo_gemma.dart' show nombreDeArchivoModelo;
 import '../widgets/componentes.dart';
 
 /// Enlace de ejemplo: Gemma 3 1B en formato `.task`, el modelo con el que se
@@ -178,6 +179,16 @@ class _BloqueIALocalState extends ConsumerState<BloqueIALocal> {
   }
 }
 
+/// Texto del estado «listo», con el nombre de archivo del modelo activo
+/// cuando se conoce (RF-52: la persona puede confirmar qué modelo cambió).
+String _textoModeloListo(String? modeloInstalado) {
+  if (modeloInstalado == null) {
+    return 'Modelo listo. El asistente puede conversar libremente.';
+  }
+  final nombre = nombreDeArchivoModelo(modeloInstalado);
+  return 'Modelo listo: $nombre. El asistente puede conversar libremente.';
+}
+
 class _Estado extends StatelessWidget {
   const _Estado({required this.gestor});
 
@@ -201,7 +212,7 @@ class _Estado extends StatelessWidget {
         ),
       EstadoModeloIA.listo => (
           Icons.check_circle_outline,
-          'Modelo listo. El asistente puede conversar libremente.',
+          _textoModeloListo(gestor.modeloInstalado),
           verdeTrabajo,
         ),
       EstadoModeloIA.error => (

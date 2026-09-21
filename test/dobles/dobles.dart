@@ -174,6 +174,9 @@ class GestorModeloIAFalso implements GestorModeloIA {
   @override
   String? error;
 
+  @override
+  String? modeloInstalado;
+
   final List<String> urlsDescargadas = [];
   bool cancelada = false;
   bool eliminado = false;
@@ -184,6 +187,7 @@ class GestorModeloIAFalso implements GestorModeloIA {
     String? tokenHuggingFace,
   }) async {
     urlsDescargadas.add(urlModelo);
+    modeloInstalado = urlModelo;
     estado = EstadoModeloIA.listo;
   }
 
@@ -193,6 +197,7 @@ class GestorModeloIAFalso implements GestorModeloIA {
   @override
   Future<void> eliminarModelo() async {
     eliminado = true;
+    modeloInstalado = null;
     estado = EstadoModeloIA.sinInstalar;
   }
 

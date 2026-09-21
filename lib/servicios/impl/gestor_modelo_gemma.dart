@@ -47,8 +47,8 @@ class GestorModeloGemma implements GestorModeloIA {
   @override
   String? get error => _error;
 
-  /// URL con la que se instaló el modelo activo, si hay uno.
-  String? get urlInstalada => _urlInstalada;
+  @override
+  String? get modeloInstalado => _urlInstalada;
 
   void _cambiar(EstadoModeloIA nuevo) {
     _estado = nuevo;
