@@ -184,11 +184,21 @@ class _AvisoRutinaIA extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
+    final color = tema.colorScheme.error;
     return Semantics(
       liveRegion: true,
-      child: Text(
-        mensaje,
-        style: tema.textTheme.bodySmall?.copyWith(color: const Color(0xFFE2787C)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 18, color: color),
+          const SizedBox(width: Espacio.s),
+          Expanded(
+            child: Text(
+              mensaje,
+              style: tema.textTheme.bodySmall?.copyWith(color: color),
+            ),
+          ),
+        ],
       ),
     );
   }

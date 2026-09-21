@@ -207,7 +207,7 @@ class _Estado extends StatelessWidget {
       EstadoModeloIA.error => (
           Icons.error_outline,
           gestor.error ?? 'La descarga ha fallado.',
-          const Color(0xFFE2787C),
+          tema.colorScheme.error,
         ),
     };
 
