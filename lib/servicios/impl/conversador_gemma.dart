@@ -25,7 +25,19 @@ const Duration _silencioMaximoEntreTokens = Duration(seconds: 12);
 /// Tope de caracteres de una respuesta, para lo mismo que el `maxOutputTokens`
 /// que el motor ignora: sin él, una respuesta que no colgó pero tampoco para
 /// de generar (o que ignora la instrucción de ser breve) no tendría límite.
-const int _longitudMaximaRespuesta = 480;
+///
+/// Es un tope duro de seguridad, no el punto normal de corte: ver
+/// [_longitudBlandaRespuesta].
+const int _longitudMaximaRespuesta = 640;
+
+/// A partir de aquí, la respuesta ya dijo lo suficiente: en cuanto el
+/// siguiente fragmento cierra una frase (`.`, `!`, `?`, `…`), se corta ahí en
+/// vez de seguir hasta el tope duro. Evita que una respuesta válida se corte
+/// a media frase solo porque llegó justo al límite de caracteres.
+const int _longitudBlandaRespuesta = 420;
+
+/// Caracteres que marcan un cierre de frase válido para el corte blando.
+const List<String> _cierresDeFrase = ['.', '!', '?', '…'];
 
 class ConversadorGemma implements ConversadorIA {
   InferenceModel? _modelo;
@@ -34,13 +46,26 @@ class ConversadorGemma implements ConversadorIA {
   @override
   Future<void> reiniciar({required String instruccionSistema}) async {
     await _modelo?.close();
-    // Ventana de contexto más pequeña: la conversación de Inicio es corta y
-    // efímera (RF-16), y un contexto menor le cuesta menos procesar al
-    // modelo en cada turno.
-    _modelo = await FlutterGemma.getActiveModel(maxTokens: 512);
+    // Ventana de contexto algo más pequeña que el máximo por defecto (1024):
+    // la conversación de Inicio es corta y efímera (RF-16). 512 en vez de
+    // 256 dejaba muy poco margen antes de que el propio motor empezara a
+    // olvidar los primeros turnos (recorta historial en cuanto se acerca al
+    // límite), lo que hacía perder el hilo a las pocas frases.
+    _modelo = await FlutterGemma.getActiveModel(maxTokens: 1024);
     _chat = await _modelo!.createChat(
       systemInstruction: instruccionSistema,
       temperature: 0.7,
+      // El motor usa `topK: 1` por defecto, es decir, decodificación
+      // «greedy»: siempre el token más probable, sin variación. En un
+      // modelo tan pequeño eso es justo lo que produce bucles de
+      // repetición y respuestas planas o inconexas. Con `topK`/`topP` se
+      // muestrea entre las opciones razonables en vez de una sola.
+      topK: 40,
+      topP: 0.92,
+      // Semilla distinta en cada reinicio de conversación; con la semilla
+      // fija por defecto, dos conversaciones con un contexto parecido
+      // sonarían idénticas.
+      randomSeed: DateTime.now().microsecondsSinceEpoch % 1000000,
     );
   }
 
@@ -63,6 +88,10 @@ class ConversadorGemma implements ConversadorIA {
           // ella la generación en curso: no sigue trabajando en segundo plano
           // por una respuesta que ya no se va a usar entera.
           if (buffer.length >= _longitudMaximaRespuesta) break;
+          if (buffer.length >= _longitudBlandaRespuesta &&
+              _cierresDeFrase.any(fragmento.token.trimRight().endsWith)) {
+            break;
+          }
         }
       }
     } on TimeoutException {
