@@ -107,6 +107,11 @@ class GestorModeloGemma implements GestorModeloIA {
     required String urlModelo,
     String? tokenHuggingFace,
   }) async {
+    // Sin este guard, un doble toque en «Descargar» pisaba `_cancelToken` con
+    // uno nuevo: la primera descarga seguía corriendo de fondo sin que
+    // «Cancelar» pudiera ya tocarla, y podía terminar sola después de que la
+    // persona creyera haberla cancelado.
+    if (_estado == EstadoModeloIA.descargando) return;
     _error = null;
     _progreso = 0;
     _cambiar(EstadoModeloIA.descargando);

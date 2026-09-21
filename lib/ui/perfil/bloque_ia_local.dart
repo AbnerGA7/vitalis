@@ -58,6 +58,10 @@ class _BloqueIALocalState extends ConsumerState<BloqueIALocal> {
       urlModelo: url,
       tokenHuggingFace: _token.text.trim().isEmpty ? null : _token.text.trim(),
     );
+    // Si la persona salió de Perfil mientras la descarga seguía en curso,
+    // `ref` ya no es utilizable: comprobar `mounted` antes de tocarlo, no
+    // solo antes del `setState` final.
+    if (!mounted) return;
     if (gestor.estado == EstadoModeloIA.listo) {
       await ref.read(estadoAppProvider.notifier).recordarModeloIA(url);
       if (mounted) setState(() => _cambiandoDeModelo = false);
