@@ -94,6 +94,34 @@ void main() {
     expect(entorno.almacen.sesiones, hasLength(1));
   });
 
+  testWidgets(
+      'los gustos guardados se muestran y escribir nuevos los actualiza',
+      (tester) async {
+    final entorno = Entorno(
+      perfil: Perfil.inicial().copiarCon(comidasFavoritas: const ['pollo']),
+    );
+    await tester.pumpWidget(entorno.envolverApp(const AplicacionVitalis()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Dieta'));
+    await tester.pumpAndSettle();
+
+    await desplazarHasta(
+      tester,
+      find.text('Te gusta'),
+      dentroDe: find.byType(PantallaDieta),
+    );
+    expect(find.text('pollo'), findsOneWidget);
+
+    final campoFavoritas = find.byType(TextField).first;
+    await tester.enterText(campoFavoritas, 'pollo, palta');
+    // El guardado ocurre al perder el foco, no en cada tecla.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+
+    expect(entorno.almacen.perfil?.comidasFavoritas, ['pollo', 'palta']);
+  });
+
   testWidgets('el agua se registra desde Dieta y el texto se actualiza',
       (tester) async {
     final entorno = Entorno(aguaMl: 1000);
