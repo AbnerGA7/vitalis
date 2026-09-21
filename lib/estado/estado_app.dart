@@ -25,6 +25,7 @@ class EstadoApp {
     this.rutinaIA,
     this.generandoRutina = false,
     this.pasoGeneracionRutina = 0,
+    this.rutinaIAError,
   });
 
   final Perfil perfil;
@@ -52,6 +53,14 @@ class EstadoApp {
   /// Estado «pensando/generando» de Entreno, mismo patrón que Dieta.
   final bool generandoRutina;
   final int pasoGeneracionRutina;
+
+  /// Mensaje del último intento fallido de generar la rutina con IA, o
+  /// `null` si no hubo fallo (o si fue el primer intento). A diferencia del
+  /// plan de comidas —que siempre cae al catálogo con un plan visible—, la
+  /// rutina de hoy ya se ve por defecto (catálogo fijo), así que un fallo
+  /// silencioso deja la pantalla exactamente igual que antes de pulsar el
+  /// botón: sin este mensaje, parece que «no ha hecho nada».
+  final String? rutinaIAError;
 
   /// Proteína objetivo derivada del peso y la tasa (RF-20, RF-51).
   int get proteinaObjetivo =>
@@ -95,6 +104,8 @@ class EstadoApp {
     bool limpiarRutinaIA = false,
     bool? generandoRutina,
     int? pasoGeneracionRutina,
+    String? rutinaIAError,
+    bool limpiarRutinaIAError = false,
   }) =>
       EstadoApp(
         perfil: perfil ?? this.perfil,
@@ -109,6 +120,9 @@ class EstadoApp {
         generandoRutina: generandoRutina ?? this.generandoRutina,
         pasoGeneracionRutina:
             pasoGeneracionRutina ?? this.pasoGeneracionRutina,
+        rutinaIAError: limpiarRutinaIAError
+            ? null
+            : (rutinaIAError ?? this.rutinaIAError),
       );
 }
 

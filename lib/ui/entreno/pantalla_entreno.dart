@@ -151,13 +151,45 @@ class _RutinaPorIA extends ConsumerWidget {
       );
     }
 
-    return AnimatedSwitcher(
-      duration: movimientoReducido(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 260),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      child: KeyedSubtree(key: ValueKey(clave), child: contenido),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedSwitcher(
+          duration: movimientoReducido(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 260),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          child: KeyedSubtree(key: ValueKey(clave), child: contenido),
+        ),
+        if (estado.rutinaIAError != null) ...[
+          const SizedBox(height: Espacio.s),
+          _AvisoRutinaIA(mensaje: estado.rutinaIAError!),
+        ],
+      ],
+    );
+  }
+}
+
+/// Aviso cuando falla generar la rutina con IA (RF-15). Sin esto, la
+/// pantalla se queda exactamente igual que antes de pulsar el botón —ya
+/// mostraba una rutina del catálogo por defecto— y parece que no ha pasado
+/// nada, a diferencia del plan de comidas, que siempre transiciona a un
+/// plan visible aunque sea el de respaldo.
+class _AvisoRutinaIA extends StatelessWidget {
+  const _AvisoRutinaIA({required this.mensaje});
+
+  final String mensaje;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Semantics(
+      liveRegion: true,
+      child: Text(
+        mensaje,
+        style: tema.textTheme.bodySmall?.copyWith(color: const Color(0xFFE2787C)),
+      ),
     );
   }
 }

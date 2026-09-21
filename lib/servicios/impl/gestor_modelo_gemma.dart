@@ -22,7 +22,7 @@ String nombreDeArchivoModelo(String urlModelo) =>
 
 /// Ruta del modelo empaquetado, tal y como se declaró en `pubspec.yaml`.
 const String rutaModeloEmpaquetado =
-    'assets/modelo_ia/qwen2.5-0.5b-instruct-q8.task';
+    'assets/modelo_ia/qwen2.5-1.5b-instruct-q8.task';
 
 class GestorModeloGemma implements GestorModeloIA {
   GestorModeloGemma();

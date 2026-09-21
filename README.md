@@ -13,7 +13,7 @@ Perfil siguen siendo accesibles directamente.
 
 ```bash
 flutter pub get
-./scripts/descargar_modelo_ia.sh   # una sola vez: ~520 MB, ver docs/12
+./scripts/descargar_modelo_ia.sh   # una sola vez: ~1,6 GB, ver docs/12
 flutter run                         # Android o iOS
 flutter test                        # 112 pruebas
 dart analyze                        # sin avisos

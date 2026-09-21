@@ -10,7 +10,7 @@ que se instala la app**, no desde que alguien pulsa «descargar».
 | Pieza | Elección | Motivo |
 |-------|----------|--------|
 | Motor de inferencia | `flutter_gemma` + `flutter_gemma_mediapipe` | Corre modelos `.task` en el dispositivo; funciona en `arm64-v8a` y también en `x86_64` (a diferencia del backend `.litertlm`, solo `arm64`), lo que cubre más gama de móviles |
-| Modelo | **Qwen2.5-0.5B-Instruct** (`litert-community`, cuantizado `q8`, ~520 MB) | Apache-2.0, **sin licencia gateada**: se puede empaquetar y redistribuir directamente. Multilingüe con soporte de español razonable a su tamaño. Los modelos Gemma de Google exigen aceptar su licencia con una cuenta de Hugging Face y no se pueden redistribuir así |
+| Modelo | **Qwen2.5-1.5B-Instruct** (`litert-community`, cuantizado `q8`, ~1,6 GB) | Apache-2.0, **sin licencia gateada**: se puede empaquetar y redistribuir directamente. Multilingüe con soporte de español razonable a su tamaño. Los modelos Gemma de Google exigen aceptar su licencia con una cuenta de Hugging Face y no se pueden redistribuir así. Se pasó de la variante 0.5B a esta tras ver fallos frecuentes generando JSON estructurado (rutinas, recetas) con el modelo más pequeño |
 | Entrada de voz | `speech_to_text`, ya existente (RF-10, RF-11) | Reconocimiento forzado a `onDevice: true` |
 | Salida de voz | `flutter_tts` | Motor de voz del sistema, offline en Android e iOS |
 
@@ -20,7 +20,7 @@ sin ningún paso manual de por medio.
 
 ## Por qué el modelo no vive en el repositorio de Git
 
-Los 520 MB del modelo superan el límite de GitHub para un archivo en un
+El 1,6 GB del modelo supera el límite de GitHub para un archivo en un
 commit normal (100 MB), y Git LFS en el plan gratuito solo da 1 GB de
 almacenamiento y 1 GB de ancho de banda al mes — un solo `git clone` podría
 agotar la cuota.
@@ -60,13 +60,18 @@ si la persona pulsa ese botón explícitamente.
 
 ## Trade-offs asumidos
 
-- **Calidad conversacional**: 0,5 mil millones de parámetros es un modelo
-  pequeño. Responde bien a peticiones cortas y recomendaciones sencillas;
-  no es comparable a un modelo de varios miles de millones de parámetros ni a
-  un servicio en la nube. Es el trade-off explícito entre «cabe en la app
-  desde el primer instante» y «la mejor calidad posible».
-- **Tamaño de la app**: el `.apk` resultante pesa varios cientos de MB más
-  que sin el modelo. Es el coste directo de que funcione sin descarga.
+- **Calidad conversacional**: 1,5 mil millones de parámetros sigue siendo un
+  modelo pequeño frente a uno de varios miles de millones o a un servicio en
+  la nube, pero responde con bastante más consistencia que el 0,5B anterior,
+  sobre todo generando el JSON estructurado de rutinas y recetas. Sigue
+  siendo el trade-off explícito entre «cabe en la app desde el primer
+  instante» y «la mejor calidad posible».
+- **Tamaño de la app**: el `.apk` resultante pesa alrededor de 1,6 GB más que
+  sin el modelo (frente a los ~520 MB de la variante 0.5B anterior). Es el
+  coste directo de que funcione sin descarga ni cuenta de nadie.
+- **RAM en el dispositivo**: el pico de memoria durante la generación ronda
+  los 1,8-2 GB. En un móvil de gama muy baja (2 GB de RAM totales) puede ir
+  justo; en gama media para arriba no debería notarse.
 - **`arm64-v8a` recomendado**: MediaPipe también corre en `x86_64`, pero el
   rendimiento y la disponibilidad de aceleración por GPU son mejores en
   `arm64-v8a`, que es lo que trae la inmensa mayoría de los móviles reales.

@@ -10,7 +10,6 @@ import '../dominio/logica/hidratacion.dart';
 import '../dominio/modelos/enums.dart';
 import '../dominio/modelos/perfil.dart';
 import '../dominio/modelos/plan_comidas.dart';
-import '../dominio/modelos/rutina.dart';
 import '../servicios/contratos/contratos.dart';
 import '../servicios/impl/generador_rutina_ia.dart';
 import 'estado_app.dart';
@@ -44,6 +43,15 @@ class NotificadorApp extends Notifier<EstadoApp> {
     await _almacen.guardarPerfil(perfil);
   }
 
+  /// Igual que [_guardarPerfil] pero sin tocar `planUsadoHoy`: para cambios
+  /// que no entran en [EstadoApp.planVigente] (comidasFavoritas,
+  /// ingredientesEvitar), invalidar el plan en uso sería un efecto
+  /// secundario sin motivo.
+  Future<void> _guardarPerfilPreservandoPlan(Perfil perfil) async {
+    state = state.copiarCon(perfil: perfil);
+    await _almacen.guardarPerfil(perfil);
+  }
+
   Future<void> _guardarPreferencias(Preferencias preferencias) async {
     state = state.copiarCon(preferencias: preferencias);
     await _almacen.guardarPreferencias(preferencias);
@@ -67,6 +75,19 @@ class NotificadorApp extends Notifier<EstadoApp> {
 
   Future<void> cambiarPreferenciaDieta(PreferenciaDieta preferencia) =>
       _guardarPerfil(state.perfil.copiarCon(preferenciaDieta: preferencia));
+
+  /// Comidas o ingredientes que le gustan a la persona (sección 4.3). Sesga
+  /// el catálogo y el pedido a la IA; nunca cambia la proteína objetivo, así
+  /// que a diferencia de [cambiarPreferenciaDieta] no invalida el plan del
+  /// día (`planUsadoHoy` se conserva).
+  Future<void> cambiarComidasFavoritas(String texto) => _guardarPerfilPreservandoPlan(
+        state.perfil.copiarCon(comidasFavoritas: texto),
+      );
+
+  /// Ingredientes que la persona no quiere ver en sus comidas (sección 4.3).
+  Future<void> cambiarIngredientesEvitar(String texto) => _guardarPerfilPreservandoPlan(
+        state.perfil.copiarCon(ingredientesEvitar: texto),
+      );
 
   Future<void> cambiarUnidades(Unidades unidades) =>
       _guardarPreferencias(state.preferencias.copiarCon(unidades: unidades));
@@ -116,6 +137,8 @@ class NotificadorApp extends Notifier<EstadoApp> {
       semilla: regenerar
           ? _reloj.ahora().millisecondsSinceEpoch
           : state.dia.millisecondsSinceEpoch,
+      comidasFavoritas: state.perfil.comidasFavoritas,
+      ingredientesEvitar: state.perfil.ingredientesEvitar,
     );
 
     state = state.copiarCon(
@@ -151,22 +174,36 @@ class NotificadorApp extends Notifier<EstadoApp> {
   /// mostrando el catálogo fijo (rutinaDelDiaProvider ya hace esa caída).
   Future<void> generarRutinaIA({bool regenerar = false}) async {
     if (state.generandoRutina) return;
-    state = state.copiarCon(generandoRutina: true, pasoGeneracionRutina: 0);
+    state = state.copiarCon(
+      generandoRutina: true,
+      pasoGeneracionRutina: 0,
+      limpiarRutinaIAError: true,
+    );
 
     for (var i = 0; i < pasosDeGeneracionRutina.length; i++) {
       state = state.copiarCon(pasoGeneracionRutina: i);
       await Future<void>.delayed(pausaEntrePasosGeneracion);
     }
 
-    Rutina? rutina;
-    if (ref.read(gestorModeloIAProvider).estado == EstadoModeloIA.listo) {
-      rutina = await generarRutinaConIA(
-        generador: ref.read(generadorContenidoIAProvider),
-        objetivo: state.perfil.objetivo,
-        id: 'ia-${state.dia.year}-${state.dia.month}-${state.dia.day}'
-            '-${_reloj.ahora().millisecondsSinceEpoch}',
+    // Sin esta distinción, un modelo todavía no listo y una generación que
+    // falla de verdad se veían exactamente igual desde fuera: nada cambiaba
+    // en pantalla y no había pista de por qué.
+    if (ref.read(gestorModeloIAProvider).estado != EstadoModeloIA.listo) {
+      state = state.copiarCon(
+        generandoRutina: false,
+        pasoGeneracionRutina: 0,
+        rutinaIAError: 'El modelo de IA todavía no está listo. Revisa su '
+            'estado en Perfil → IA local.',
       );
+      return;
     }
+
+    final rutina = await generarRutinaConIA(
+      generador: ref.read(generadorContenidoIAProvider),
+      objetivo: state.perfil.objetivo,
+      id: 'ia-${state.dia.year}-${state.dia.month}-${state.dia.day}'
+          '-${_reloj.ahora().millisecondsSinceEpoch}',
+    );
 
     if (rutina != null) {
       state = state.copiarCon(
@@ -176,7 +213,12 @@ class NotificadorApp extends Notifier<EstadoApp> {
       );
       await _almacen.guardarRutinaIA(state.dia, rutina);
     } else {
-      state = state.copiarCon(generandoRutina: false, pasoGeneracionRutina: 0);
+      state = state.copiarCon(
+        generandoRutina: false,
+        pasoGeneracionRutina: 0,
+        rutinaIAError: 'No se pudo generar una rutina esta vez. Se '
+            'mantiene la de siempre; puedes volver a intentarlo.',
+      );
     }
   }
 

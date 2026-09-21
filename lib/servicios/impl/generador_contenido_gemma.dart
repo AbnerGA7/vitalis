@@ -19,7 +19,11 @@ import '../contratos/contratos.dart';
 /// la respuesta entera para poder parsear el JSON —a diferencia del chat, no
 /// tiene sentido quedarse con un JSON a medias—, así que el tope es sobre la
 /// respuesta completa, no por silencio entre tokens.
-const Duration _tiempoMaximoGeneracion = Duration(seconds: 40);
+///
+/// La rutina (varios ejercicios, cada uno con nombre, detalle e indicación)
+/// pide bastante más texto que una receta, así que 40 s se quedaba corto y
+/// la generación fallaba por tiempo antes de completar el JSON.
+const Duration _tiempoMaximoGeneracion = Duration(seconds: 60);
 
 class GeneradorContenidoGemma implements GeneradorContenidoIA {
   @override
@@ -34,11 +38,20 @@ class GeneradorContenidoGemma implements GeneradorContenidoIA {
     // recursos — eso es lo que hacía que la generación nunca terminara.
     InferenceModel? modelo;
     try {
-      modelo = await FlutterGemma.getActiveModel(maxTokens: 768);
+      // 1024 en vez de 768: la rutina generada (varios pasos, cada uno con
+      // su propio texto) no siempre cabía en la ventana anterior junto con
+      // la instrucción de sistema y la petición.
+      modelo = await FlutterGemma.getActiveModel(maxTokens: 1024);
       final chat = await modelo.createChat(
         systemInstruction: instruccionSistema,
         maxOutputTokens: 350,
-        temperature: 0.8,
+        temperature: 0.6,
+        // Mismo problema que en el chat conversacional (ConversadorGemma):
+        // `topK: 1` por defecto es decodificación greedy, la causa más
+        // probable de que el JSON generado saliera mal formado o repetitivo
+        // y `_parsearRutinaGenerada`/`_parsearPlatosGenerados` lo descartaran.
+        topK: 40,
+        topP: 0.9,
       );
       await chat.addQuery(Message.text(text: peticion, isUser: true));
       // Mismo riesgo que tenía el chat antes de arreglarlo: sin tope, un

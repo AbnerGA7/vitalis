@@ -41,10 +41,10 @@ flutter:
   assets:
     - assets/fuentes/OFL.txt
     # Modelo de IA local empaquetado (ADR-03): se instala desde este asset al
-    # arrancar, sin red. No está en el repositorio (pesa ~520 MB, por encima
+    # arrancar, sin red. No está en el repositorio (pesa ~1,6 GB, por encima
     # del límite de GitHub); scripts/descargar_modelo_ia.sh lo descarga una
     # vez, antes de compilar. Ver docs/12-modelo-ia-local.md.
-    - assets/modelo_ia/qwen2.5-0.5b-instruct-q8.task
+    - assets/modelo_ia/qwen2.5-1.5b-instruct-q8.task
 
   # Inter va empaquetada: descargarla en tiempo de ejecucion rompería el
   # requisito de funcionar sin red (RNF-01, RNF-09).
