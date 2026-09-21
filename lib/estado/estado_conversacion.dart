@@ -82,6 +82,12 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
     // Se comprueba al entrar si hay dictado; si no lo hay, la interfaz se
     // queda solo con texto, que es la alternativa que exige AC-11.
     Future<void>(() async {
+      // Comprobar `_vivo` antes de tocar `ref`, no solo antes de escribir el
+      // estado: si el notificador se destruye antes de que arranque esta
+      // tarea (posible en cuanto se planifica con `Future(...)`, que no
+      // corre de forma síncrona), `ref.read` lanza porque el contenedor ya
+      // está destruido.
+      if (!_vivo) return;
       final hay = await ref.read(vozProvider).disponible();
       if (_vivo) {
         state = state.copiarCon(vozDisponible: hay);
@@ -225,8 +231,13 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
       },
       alFallar: (error) {
         if (!_vivo) return;
+        // Sin apagar también el modo manos-libres aquí, `modoVozContinua`
+        // se quedaba en `true` aunque ya no hubiera nada escuchando: el
+        // estado decía "modo continuo activo" sobre un dictado que en
+        // realidad había fallado y no se iba a reabrir solo.
         state = state.copiarCon(
           fase: FaseAsistente.reposo,
+          modoVozContinua: false,
           errorVoz: 'No he podido usar el dictado. '
               'Puedes escribir tu mensaje en el campo de texto.',
         );

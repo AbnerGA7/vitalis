@@ -75,6 +75,19 @@ void main() {
     expect(mensajes.where((m) => m.autor.name == 'persona'), hasLength(2));
   });
 
+  test('si el dictado falla, el modo manos-libres no se queda encendido',
+      () async {
+    final entorno = Entorno(hayDictado: false);
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(conversacionProvider.notifier);
+
+    await notificador.iniciarDictado();
+
+    final estado = contenedor.read(conversacionProvider);
+    expect(estado.modoVozContinua, isFalse);
+    expect(estado.errorVoz, isNotNull);
+  });
+
   test('escribir a mano apaga el modo manos-libres', () async {
     final entorno = Entorno();
     final contenedor = entorno.contenedor();

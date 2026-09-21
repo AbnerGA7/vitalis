@@ -147,8 +147,29 @@ class _PreferenciasComidaState extends ConsumerState<_PreferenciasComida> {
     super.dispose();
   }
 
+  /// Si el perfil cambia por fuera de este campo (p. ej. «Borrar mis datos»
+  /// en Perfil), sincroniza el texto. La pantalla de Dieta no se destruye al
+  /// cambiar de pestaña (el shell usa `IndexedStack`), así que sin esto el
+  /// campo se quedaba con el texto de antes de borrar. Solo se toca si el
+  /// campo no tiene el foco, para no pisar lo que la persona está tecleando.
+  void _sincronizarSiHaceFalta(
+    TextEditingController controlador,
+    FocusNode foco,
+    String valorReal,
+  ) {
+    if (!foco.hasFocus && controlador.text != valorReal) {
+      controlador.text = valorReal;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final perfil = ref.watch(
+      estadoAppProvider.select((estado) => estado.perfil),
+    );
+    _sincronizarSiHaceFalta(_favoritas, _focoFavoritas, perfil.comidasFavoritas);
+    _sincronizarSiHaceFalta(_evitar, _focoEvitar, perfil.ingredientesEvitar);
+
     return TarjetaVitalis(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
