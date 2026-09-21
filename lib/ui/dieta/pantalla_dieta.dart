@@ -79,11 +79,97 @@ class PantallaDieta extends ConsumerWidget {
           ),
           const SizedBox(height: Espacio.xl),
 
+          const TituloSeccion(
+            'Gustos',
+            detalle: 'Texto libre, separado por comas. Sesga qué platos '
+                'salen, nunca cuánta proteína necesitas.',
+          ),
+          const SizedBox(height: Espacio.m),
+          const _PreferenciasComida(),
+          const SizedBox(height: Espacio.xl),
+
           const TarjetaPlan(),
           const SizedBox(height: Espacio.xl),
 
           const BloqueHidratacion(),
           const SizedBox(height: Espacio.xxl),
+        ],
+      ),
+    );
+  }
+}
+
+/// Campos de texto libre para gustos/exclusiones de comida (sección 4.3).
+/// Guarda al perder el foco, no en cada tecla, para no escribir a disco de
+/// más mientras la persona sigue escribiendo.
+class _PreferenciasComida extends ConsumerStatefulWidget {
+  const _PreferenciasComida();
+
+  @override
+  ConsumerState<_PreferenciasComida> createState() =>
+      _PreferenciasComidaState();
+}
+
+class _PreferenciasComidaState extends ConsumerState<_PreferenciasComida> {
+  late final TextEditingController _favoritas;
+  late final TextEditingController _evitar;
+  final _focoFavoritas = FocusNode();
+  final _focoEvitar = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    final perfil = ref.read(estadoAppProvider).perfil;
+    _favoritas = TextEditingController(text: perfil.comidasFavoritas);
+    _evitar = TextEditingController(text: perfil.ingredientesEvitar);
+    _focoFavoritas.addListener(_alPerderFocoFavoritas);
+    _focoEvitar.addListener(_alPerderFocoEvitar);
+  }
+
+  void _alPerderFocoFavoritas() {
+    if (!_focoFavoritas.hasFocus) {
+      ref.read(estadoAppProvider.notifier).cambiarComidasFavoritas(_favoritas.text);
+    }
+  }
+
+  void _alPerderFocoEvitar() {
+    if (!_focoEvitar.hasFocus) {
+      ref.read(estadoAppProvider.notifier).cambiarIngredientesEvitar(_evitar.text);
+    }
+  }
+
+  @override
+  void dispose() {
+    _favoritas.dispose();
+    _evitar.dispose();
+    _focoFavoritas.dispose();
+    _focoEvitar.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TarjetaVitalis(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _favoritas,
+            focusNode: _focoFavoritas,
+            decoration: const InputDecoration(
+              labelText: 'Te gusta',
+              hintText: 'Ej: pollo, palta, quinua',
+            ),
+          ),
+          const SizedBox(height: Espacio.m),
+          TextField(
+            controller: _evitar,
+            focusNode: _focoEvitar,
+            decoration: const InputDecoration(
+              labelText: 'No te gusta / evitar',
+              hintText: 'Ej: tomate, cebolla',
+            ),
+          ),
         ],
       ),
     );

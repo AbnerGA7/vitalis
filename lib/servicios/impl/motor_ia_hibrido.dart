@@ -88,12 +88,23 @@ String _instruccionGeneradorRecetas() =>
     '(nada de "judías", "patata", "boniato" ni "aguacate"). No incluyas '
     'cantidades ni gramos: de eso ya se encarga la app.';
 
-String _peticionRecetas(PreferenciaDieta preferencia) =>
-    'Propón 4 platos peruanos, uno para cada una de estas franjas en este '
-    'orden: ${nombresFranjas.join(', ')}. La dieta es '
-    '"${preferencia.etiqueta}". Responde solo con este JSON, una lista de '
-    'exactamente 4 objetos: '
-    '[{"nombre": "...", "ingredientes": ["...", "..."]}, ...]';
+String _peticionRecetas(
+  PreferenciaDieta preferencia, {
+  String comidasFavoritas = '',
+  String ingredientesEvitar = '',
+}) {
+  final favoritas = comidasFavoritas.trim();
+  final evitar = ingredientesEvitar.trim();
+  return 'Propón 4 platos peruanos, uno para cada una de estas franjas en '
+      'este orden: ${nombresFranjas.join(', ')}. La dieta es '
+      '"${preferencia.etiqueta}". '
+      '${favoritas.isEmpty ? '' : 'A la persona le gusta: $favoritas; '
+          'úsalo si encaja con la franja y la dieta. '}'
+      '${evitar.isEmpty ? '' : 'No uses estos ingredientes bajo ningún '
+          'motivo: $evitar. '}'
+      'Responde solo con este JSON, una lista de exactamente 4 objetos: '
+      '[{"nombre": "...", "ingredientes": ["...", "..."]}, ...]';
+}
 
 /// Recorta cualquier texto que el modelo añada antes o después del JSON
 /// (preámbulo, bloque de código...), quedándose con lo que hay entre el
@@ -128,6 +139,24 @@ List<PlatoBase>? _parsearPlatosGenerados(String? crudo) {
   } on FormatException {
     return null;
   }
+}
+
+/// True si algún plato de [platos] menciona (en el nombre o los
+/// ingredientes) alguna palabra de [ingredientesEvitar].
+bool _algunPlatoTieneIngredienteEvitado(
+  List<PlatoBase> platos,
+  String ingredientesEvitar,
+) {
+  final palabras = normalizar(ingredientesEvitar)
+      .split(RegExp(r'[,;\n]+|\by\b'))
+      .map((p) => p.trim())
+      .where((p) => p.isNotEmpty)
+      .toList();
+  if (palabras.isEmpty) return false;
+  return platos.any((plato) {
+    final texto = normalizar('${plato.nombre} ${plato.ingredientes.join(' ')}');
+    return palabras.any(texto.contains);
+  });
 }
 
 /// «Por qué este plan» cuando los platos los ha propuesto la IA, en vez del
@@ -187,15 +216,28 @@ class MotorIAHibrido implements MotorIA {
     required TasaProteina tasa,
     required PreferenciaDieta preferencia,
     int semilla = 0,
+    String comidasFavoritas = '',
+    String ingredientesEvitar = '',
   }) async {
-    final platosIA = conversacionDisponible
+    final generados = conversacionDisponible
         ? _parsearPlatosGenerados(
             await generador.generar(
               instruccionSistema: _instruccionGeneradorRecetas(),
-              peticion: _peticionRecetas(preferencia),
+              peticion: _peticionRecetas(
+                preferencia,
+                comidasFavoritas: comidasFavoritas,
+                ingredientesEvitar: ingredientesEvitar,
+              ),
             ),
           )
         : null;
+    // El prompt ya pide no usar estos ingredientes, pero un modelo de este
+    // tamaño no lo garantiza: si alguno se cuela, todo el plan de la IA se
+    // descarta y cae al catálogo, que sí lo respeta siempre (sección 4.3).
+    final platosIA = (generados != null &&
+            _algunPlatoTieneIngredienteEvitado(generados, ingredientesEvitar))
+        ? null
+        : generados;
 
     if (platosIA == null) {
       return base.generarPlan(
@@ -203,6 +245,8 @@ class MotorIAHibrido implements MotorIA {
         tasa: tasa,
         preferencia: preferencia,
         semilla: semilla,
+        comidasFavoritas: comidasFavoritas,
+        ingredientesEvitar: ingredientesEvitar,
       );
     }
 

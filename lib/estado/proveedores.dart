@@ -117,6 +117,8 @@ ContextoAsistente _contextoDesdeEstado(Ref ref) {
       preferencias: estado.preferencias,
       fecha: estado.dia,
     ).nombre,
+    comidasFavoritas: estado.perfil.comidasFavoritas,
+    ingredientesEvitar: estado.perfil.ingredientesEvitar,
   );
 }
 

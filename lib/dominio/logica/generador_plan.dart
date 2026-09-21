@@ -9,6 +9,7 @@ import 'dart:math';
 import '../catalogo/platos.dart';
 import '../modelos/enums.dart';
 import '../modelos/plan_comidas.dart';
+import 'clasificador_intenciones.dart' show normalizar;
 import 'proteina.dart';
 
 /// Reparto de proteína entre las cuatro comidas. Sección 4.3.
@@ -30,16 +31,19 @@ PlanComidas generarPlanDelDia({
   required PreferenciaDieta preferencia,
   required DateTime fecha,
   int semilla = 0,
+  String comidasFavoritas = '',
+  String ingredientesEvitar = '',
 }) {
   final objetivo = proteinaObjetivoG(pesoKg: pesoKg, tasa: tasa);
   final catalogo = catalogoPlatos[preferencia]!;
   final azar = Random(semilla);
+  final favoritas = _palabrasDePreferencia(comidasFavoritas);
+  final evitar = _palabrasDePreferencia(ingredientesEvitar);
 
   final comidas = <Comida>[];
   for (var i = 0; i < repartoProteina.length; i++) {
     final proteinaG = (objetivo * repartoProteina[i]).round();
-    final opciones = catalogo[i];
-    final plato = opciones[azar.nextInt(opciones.length)];
+    final plato = _elegirPlato(catalogo[i], favoritas, evitar, azar);
     comidas.add(
       Comida(
         hora: horasComidas[i],
@@ -64,6 +68,47 @@ PlanComidas generarPlanDelDia({
       objetivoG: objetivo,
     ),
   );
+}
+
+/// Separa un texto libre («pollo, palta y quinua») en palabras sueltas,
+/// normalizadas para comparar sin acentos ni mayúsculas.
+List<String> _palabrasDePreferencia(String texto) => normalizar(texto)
+    .split(RegExp(r'[,;\n]+|\by\b'))
+    .map((p) => p.trim())
+    .where((p) => p.isNotEmpty)
+    .toList();
+
+/// Si el nombre o los ingredientes de [plato] contienen alguna de [palabras].
+bool _platoMenciona(PlatoBase plato, List<String> palabras) {
+  if (palabras.isEmpty) return false;
+  final texto = normalizar('${plato.nombre} ${plato.ingredientes.join(' ')}');
+  return palabras.any(texto.contains);
+}
+
+/// Elige un plato entre [opciones] para una franja del catálogo.
+///
+/// Primero descarta los que mencionan algo de [evitar] — salvo que eso deje
+/// la franja sin ninguna opción, en cuyo caso se ignora el filtro: nunca se
+/// deja una comida vacía por una preferencia (sección 4.3). Entre lo que
+/// queda, si algo coincide con [favoritas] esa gana; si no hay preferencias
+/// o ninguna coincide, decide el azar como siempre (RF-24).
+PlatoBase _elegirPlato(
+  List<PlatoBase> opciones,
+  List<String> favoritas,
+  List<String> evitar,
+  Random azar,
+) {
+  final sinEvitadas = evitar.isEmpty
+      ? opciones
+      : opciones.where((p) => !_platoMenciona(p, evitar)).toList();
+  final candidatas = sinEvitadas.isEmpty ? opciones : sinEvitadas;
+
+  final favoritasEntreCandidatas =
+      candidatas.where((p) => _platoMenciona(p, favoritas)).toList();
+  final elegibles =
+      favoritasEntreCandidatas.isEmpty ? candidatas : favoritasEntreCandidatas;
+
+  return elegibles[azar.nextInt(elegibles.length)];
 }
 
 /// Texto «Por qué este plan» (RF-23). La app recomienda, no manda: cada plan

@@ -39,6 +39,8 @@ class MotorIALocal implements MotorIA {
     required TasaProteina tasa,
     required PreferenciaDieta preferencia,
     int semilla = 0,
+    String comidasFavoritas = '',
+    String ingredientesEvitar = '',
   }) async =>
       generarPlanDelDia(
         pesoKg: pesoKg,
@@ -46,6 +48,8 @@ class MotorIALocal implements MotorIA {
         preferencia: preferencia,
         fecha: reloj.ahora(),
         semilla: semilla,
+        comidasFavoritas: comidasFavoritas,
+        ingredientesEvitar: ingredientesEvitar,
       );
 
   /// Sin modelo de lenguaje real detrás, este motor nunca inventa fuera de
@@ -68,6 +72,8 @@ class MotorIALocal implements MotorIA {
           tasa: contexto.tasa,
           preferencia: contexto.preferencia,
           semilla: reloj.ahora().millisecondsSinceEpoch,
+          comidasFavoritas: contexto.comidasFavoritas,
+          ingredientesEvitar: contexto.ingredientesEvitar,
         );
         return RespuestaAsistente(
           intencion: intencion,
