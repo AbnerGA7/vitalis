@@ -7,6 +7,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../dominio/modelos/enums.dart';
 import '../dominio/modelos/mensaje.dart';
 import '../servicios/contratos/contratos.dart';
 import '../servicios/impl/motor_ia_hibrido.dart';
@@ -15,6 +16,22 @@ import 'proveedores.dart';
 
 /// Estados del asistente en Inicio (sección 3).
 enum FaseAsistente { reposo, escuchando, pensando, respondido }
+
+/// Caracteres que marcan un cierre de frase válido para ir hablando la
+/// respuesta por partes en cuanto cada una está completa (mismo criterio que
+/// [ConversadorGemma] al cortar la generación).
+const List<String> _cierresDeFrase = ['.', '!', '?', '…'];
+
+/// Índice justo después del último cierre de frase en [texto], o `null` si
+/// todavía no hay ninguna frase cerrada.
+int? _finDeUltimaFraseCerrada(String texto) {
+  var mejor = -1;
+  for (final cierre in _cierresDeFrase) {
+    final indice = texto.lastIndexOf(cierre);
+    if (indice > mejor) mejor = indice;
+  }
+  return mejor == -1 ? null : mejor + 1;
+}
 
 class EstadoConversacion {
   const EstadoConversacion({
@@ -128,6 +145,11 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
   /// [porVoz] evita el retraso artificial de los pasos de «pensando»: en el
   /// chat de voz esa espera se suma a la de la propia inferencia local, y ahí
   /// cada milisegundo se nota.
+  ///
+  /// La respuesta llega en streaming (RF-13): el mensaje del asistente se va
+  /// actualizando fragmento a fragmento en vez de aparecer entero al final,
+  /// y cada frase que se completa se dice en voz alta sin esperar a que
+  /// termine de generarse toda la respuesta.
   Future<void> enviar([String? texto, bool porVoz = false]) async {
     final contenido = (texto ?? state.borrador).trim();
     if (contenido.isEmpty) return;
@@ -159,37 +181,82 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
       state = state.copiarCon(pasoPensando: 'Mirando tu perfil');
     }
 
-    final respuesta = await _motor.responder(contenido);
+    var vocalizado = '';
+    var huboMensaje = false;
+    Future<void>? colaVoz;
+    var ultima = const RespuestaAsistente(
+      intencion: Intencion.desconocida,
+      texto: '',
+    );
+
+    void hablarEnCola(String fragmentoDeTexto) {
+      final previa = colaVoz;
+      colaVoz = previa == null
+          ? _hablar(fragmentoDeTexto)
+          : previa.then((_) => _continuarHablando(fragmentoDeTexto));
+    }
+
+    await for (final fragmento in _motor.responderEnVivo(contenido)) {
+      if (!_vivo) return;
+      ultima = fragmento;
+
+      final mensaje = Mensaje(
+        autor: Autor.asistente,
+        texto: fragmento.texto,
+        tipo: Mensaje.tipoDeIntencion(
+          fragmento.intencion,
+          esConversacionLibre: fragmento.esConversacionLibre,
+        ),
+        plan: fragmento.plan,
+        ejemplos: fragmento.ejemplos,
+      );
+      state = state.copiarCon(
+        mensajes: [
+          ...huboMensaje
+              ? state.mensajes.sublist(0, state.mensajes.length - 1)
+              : state.mensajes,
+          mensaje,
+        ],
+        fase: FaseAsistente.respondido,
+        pasoPensando: '',
+      );
+      huboMensaje = true;
+
+      if (!fragmento.texto.startsWith(vocalizado)) {
+        // El texto no es continuación de lo ya dicho (p. ej. se reemplazó
+        // entero por la corrección de tono de MotorIAHibrido): se habla de
+        // cero, interrumpiendo lo que estuviera sonando.
+        vocalizado = '';
+        colaVoz = null;
+      }
+      final cierre = _finDeUltimaFraseCerrada(fragmento.texto);
+      if (cierre != null && cierre > vocalizado.length) {
+        final frase =
+            fragmento.texto.substring(vocalizado.length, cierre).trim();
+        vocalizado = fragmento.texto.substring(0, cierre);
+        if (frase.isNotEmpty) hablarEnCola(frase);
+      }
+    }
     if (!_vivo) return;
 
-    final mensaje = Mensaje(
-      autor: Autor.asistente,
-      texto: respuesta.texto,
-      tipo: Mensaje.tipoDeIntencion(
-        respuesta.intencion,
-        esConversacionLibre: respuesta.esConversacionLibre,
-      ),
-      plan: respuesta.plan,
-      ejemplos: respuesta.ejemplos,
-    );
+    _anunciador.anunciar(ultima.texto, prioridad: PrioridadAnuncio.cortes);
 
-    state = state.copiarCon(
-      mensajes: [...state.mensajes, mensaje],
-      fase: FaseAsistente.respondido,
-      pasoPensando: '',
-    );
-    _anunciador.anunciar(respuesta.texto, prioridad: PrioridadAnuncio.cortes);
+    final cola = ultima.texto.startsWith(vocalizado)
+        ? ultima.texto.substring(vocalizado.length).trim()
+        : ultima.texto;
+    if (cola.isNotEmpty) hablarEnCola(cola);
+
     // El chat de voz no espera a que termine de hablar para seguir usable:
     // la voz es un añadido, el texto ya está en pantalla. Si el turno vino
     // por voz y el modo manos-libres sigue activo, en cuanto termine de
-    // hablar se reabre el dictado solo (ver _hablarYSeguirEscuchando).
-    unawaited(_hablarYSeguirEscuchando(respuesta.texto, porVoz: porVoz));
+    // decir toda la respuesta se reabre el dictado solo.
+    unawaited(_seguirEscuchandoTrasHablar(colaVoz, porVoz: porVoz));
   }
 
   Future<void> _hablar(String texto) async {
     try {
       // Tope de tiempo también aquí: el modo manos-libres espera a que
-      // termine de hablar para volver a escuchar (_hablarYSeguirEscuchando),
+      // termine de hablar para volver a escuchar (_seguirEscuchandoTrasHablar),
       // así que un motor de TTS colgado dejaría el micro sin reabrirse
       // nunca, en silencio, sin ningún aviso.
       await ref
@@ -202,15 +269,29 @@ class NotificadorConversacion extends Notifier<EstadoConversacion> {
     }
   }
 
+  /// Como [_hablar], pero para encadenar la siguiente frase de la misma
+  /// respuesta sin cortar la anterior a medias (RF-11, chat de voz).
+  Future<void> _continuarHablando(String texto) async {
+    try {
+      await ref
+          .read(sintesisVozProvider)
+          .continuar(texto)
+          .timeout(const Duration(seconds: 20));
+    } on Exception {
+      // Mismo motivo que en _hablar.
+    }
+  }
+
   /// Manos-libres (RF-10, RF-11): un turno por voz reabre el dictado solo al
-  /// terminar de hablar, sin que la persona tenga que volver a tocar el
-  /// micro para seguir la conversación. Se corta si mientras tanto se
-  /// desactivó el modo (p. ej. porque la persona se puso a escribir).
-  Future<void> _hablarYSeguirEscuchando(
-    String texto, {
+  /// terminar de decir toda la respuesta (todas las frases encoladas, no
+  /// cada una suelta), sin que la persona tenga que volver a tocar el micro
+  /// para seguir la conversación. Se corta si mientras tanto se desactivó el
+  /// modo (p. ej. porque la persona se puso a escribir).
+  Future<void> _seguirEscuchandoTrasHablar(
+    Future<void>? colaVoz, {
     required bool porVoz,
   }) async {
-    await _hablar(texto);
+    await colaVoz;
     if (!_vivo || !porVoz || !state.modoVozContinua) return;
     await iniciarDictado();
   }

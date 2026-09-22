@@ -176,6 +176,16 @@ abstract interface class MotorIA {
   /// uno cargado ([conversacionDisponible]).
   Future<RespuestaAsistente> responder(String texto, {List<Mensaje> historial});
 
+  /// Como [responder], pero entrega la respuesta según se va generando en
+  /// vez de esperar a que esté completa: cada evento trae el texto acumulado
+  /// hasta ese momento y el último es el definitivo. Solo aporta algo en la
+  /// conversación libre con el modelo real; lo resuelto por reglas llega en
+  /// un único evento ya completo, igual que con [responder].
+  Stream<RespuestaAsistente> responderEnVivo(
+    String texto, {
+    List<Mensaje> historial,
+  });
+
   /// Pasos que se muestran mientras genera (RF-15, sección 3 · Dieta).
   List<String> get pasosDeGeneracion;
 
@@ -243,6 +253,11 @@ abstract interface class GestorModeloIA {
 abstract interface class SintesisVoz {
   Future<void> hablar(String texto);
 
+  /// Como [hablar], pero sin cortar lo que ya se esté diciendo: encadena
+  /// [texto] a continuación, para ir leyendo una respuesta por frases sin que
+  /// se corten entre sí (chat de voz, RF-11).
+  Future<void> continuar(String texto);
+
   Future<void> detener();
 
   bool get hablando;
@@ -259,6 +274,10 @@ abstract interface class ConversadorIA {
 
   /// Responde dentro de la conversación en curso.
   Future<String> responder(String texto);
+
+  /// Como [responder], pero emitiendo el texto acumulado a medida que el
+  /// modelo lo genera; el último evento es la respuesta completa.
+  Stream<String> responderEnVivo(String texto);
 }
 
 /// Generación de contenido de una sola vuelta (recetas, ejercicios...), sin

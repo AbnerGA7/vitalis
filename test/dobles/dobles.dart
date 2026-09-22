@@ -211,8 +211,14 @@ class ConversadorIAFalso implements ConversadorIA {
   final List<String> mensajesRecibidos = [];
   String respuesta = 'Respuesta simulada del modelo.';
 
-  /// Si no es null, `responder` lanza esta excepción en vez de responder.
+  /// Si no es null, `responder`/`responderEnVivo` lanzan esta excepción en
+  /// vez de responder.
   Object? fallarCon;
+
+  /// Si se define, `responderEnVivo` emite estos trozos uno a uno (cada uno
+  /// se suma al acumulado anterior) en vez de [respuesta] entera de un
+  /// tirón: sirve para probar la UI mientras la respuesta llega en partes.
+  List<String>? fragmentosSimulados;
 
   @override
   Future<void> reiniciar({required String instruccionSistema}) async {
@@ -226,6 +232,23 @@ class ConversadorIAFalso implements ConversadorIA {
     final fallo = fallarCon;
     if (fallo != null) throw fallo;
     return respuesta;
+  }
+
+  @override
+  Stream<String> responderEnVivo(String texto) async* {
+    mensajesRecibidos.add(texto);
+    final fallo = fallarCon;
+    if (fallo != null) throw fallo;
+    final fragmentos = fragmentosSimulados;
+    if (fragmentos == null) {
+      yield respuesta;
+      return;
+    }
+    var acumulado = '';
+    for (final fragmento in fragmentos) {
+      acumulado += fragmento;
+      yield acumulado;
+    }
   }
 }
 
@@ -253,6 +276,13 @@ class SintesisVozEspia implements SintesisVoz {
 
   @override
   Future<void> hablar(String texto) async {
+    hablando = true;
+    dicho.add(texto);
+    hablando = false;
+  }
+
+  @override
+  Future<void> continuar(String texto) async {
     hablando = true;
     dicho.add(texto);
     hablando = false;

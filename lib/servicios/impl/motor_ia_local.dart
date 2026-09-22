@@ -106,6 +106,16 @@ class MotorIALocal implements MotorIA {
         );
     }
   }
+
+  /// Por reglas la respuesta ya sale completa: un único evento, igual que
+  /// [responder].
+  @override
+  Stream<RespuestaAsistente> responderEnVivo(
+    String texto, {
+    List<Mensaje> historial = const [],
+  }) async* {
+    yield await responder(texto, historial: historial);
+  }
 }
 
 /// Reloj por defecto del motor, para no obligar a inyectarlo en pruebas

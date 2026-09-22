@@ -152,6 +152,45 @@ void main() {
     );
   });
 
+  test('la respuesta en streaming actualiza un único mensaje del asistente',
+      () async {
+    final entorno = Entorno(estadoModeloIA: EstadoModeloIA.listo);
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(conversacionProvider.notifier);
+
+    entorno.conversadorIA.fragmentosSimulados = ['Claro, ', 'prueba con esto.'];
+
+    await notificador.enviar('¿qué me recomiendas?');
+
+    final asistente = contenedor
+        .read(conversacionProvider)
+        .mensajes
+        .where((m) => m.autor.name == 'asistente')
+        .toList();
+    expect(asistente, hasLength(1));
+    expect(asistente.single.texto, 'Claro, prueba con esto.');
+  });
+
+  test('en el chat de voz cada frase completa se dice por separado, en orden',
+      () async {
+    final entorno = Entorno(estadoModeloIA: EstadoModeloIA.listo);
+    final contenedor = entorno.contenedor();
+    final notificador = contenedor.read(conversacionProvider.notifier);
+
+    entorno.conversadorIA.fragmentosSimulados = [
+      'Prueba con una manzana. ',
+      'Y bebe agua.',
+    ];
+
+    await notificador.enviar('¿qué merienda me recomiendas?', true);
+    await _esperarRespuesta();
+
+    expect(entorno.sintesisVoz.dicho, [
+      'Prueba con una manzana.',
+      'Y bebe agua.',
+    ]);
+  });
+
   test('vaciar la conversación también reinicia la memoria del modelo real',
       () async {
     final entorno = Entorno(estadoModeloIA: EstadoModeloIA.listo);

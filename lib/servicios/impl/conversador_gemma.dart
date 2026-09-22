@@ -72,6 +72,15 @@ class ConversadorGemma implements ConversadorIA {
 
   @override
   Future<String> responder(String texto) async {
+    var ultimo = '';
+    await for (final parcial in responderEnVivo(texto)) {
+      ultimo = parcial;
+    }
+    return ultimo;
+  }
+
+  @override
+  Stream<String> responderEnVivo(String texto) async* {
     final chat = _chat;
     if (chat == null) {
       throw StateError('Llama a reiniciar() antes de responder().');
@@ -85,6 +94,12 @@ class ConversadorGemma implements ConversadorIA {
           .timeout(_silencioMaximoEntreTokens)) {
         if (fragmento is TextResponse) {
           buffer.write(fragmento.token);
+          // Se repara sobre el acumulado entero, no solo sobre el fragmento
+          // nuevo: si el carácter partido queda a caballo entre dos trozos
+          // (ver repararMojibake), el arreglo solo funciona visto en
+          // conjunto. Un carácter todavía a medias en este preciso instante
+          // se autocorrige en el próximo evento, en cuanto llegue el resto.
+          yield repararMojibake(buffer.toString().trim());
           // Al cortar aquí, el `break` cancela la suscripción al stream y con
           // ella la generación en curso: no sigue trabajando en segundo plano
           // por una respuesta que ya no se va a usar entera.
@@ -102,9 +117,6 @@ class ConversadorGemma implements ConversadorIA {
       if (buffer.isEmpty) rethrow;
     }
 
-    final respuesta = repararMojibake(buffer.toString().trim());
-    return respuesta.isEmpty
-        ? 'No se me ocurre nada que añadir a eso.'
-        : respuesta;
+    if (buffer.isEmpty) yield 'No se me ocurre nada que añadir a eso.';
   }
 }

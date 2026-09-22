@@ -227,4 +227,52 @@ void main() {
     expect(respuesta.texto, isNot(contains('gorda')));
     expect(respuesta.texto, contains('Prefiero no entrar en eso'));
   });
+
+  test('responderEnVivo entrega la respuesta de golpe cuando es por reglas',
+      () async {
+    final eventos = await hibrido
+        .responderEnVivo('apunta un vaso de agua')
+        .toList();
+
+    expect(eventos, hasLength(1));
+    expect(eventos.single.esConversacionLibre, isFalse);
+  });
+
+  test('responderEnVivo entrega la conversación libre fragmento a fragmento',
+      () async {
+    gestor.estado = EstadoModeloIA.listo;
+    conversador.fragmentosSimulados = ['Prueba ', 'con una ', 'manzana.'];
+
+    final eventos =
+        await hibrido.responderEnVivo('¿qué merienda me recomiendas?').toList();
+
+    expect(eventos.map((e) => e.texto).toList(), [
+      'Prueba ',
+      'Prueba con una ',
+      'Prueba con una manzana.',
+    ]);
+    expect(eventos.every((e) => e.esConversacionLibre), isTrue);
+  });
+
+  test(
+      'responderEnVivo corta a la respuesta fija en cuanto el tono se '
+      'vuelve inapropiado, sin esperar al final del stream', () async {
+    gestor.estado = EstadoModeloIA.listo;
+    conversador.fragmentosSimulados = [
+      'Con lo ',
+      'gorda ',
+      'que estás, mejor ni preguntes.',
+    ];
+
+    final eventos =
+        await hibrido.responderEnVivo('¿cómo voy con la dieta?').toList();
+
+    // Dos eventos, no tres: en cuanto se detecta el tono se emite la
+    // respuesta fija y el resto de fragmentos ya no aporta nada nuevo que
+    // mostrar, así que no hace falta repetirla.
+    expect(eventos, hasLength(2));
+    expect(eventos[0].texto, 'Con lo ');
+    expect(eventos[1].texto, contains('Prefiero no entrar en eso'));
+    expect(eventos.any((e) => e.texto.contains('gorda')), isFalse);
+  });
 }

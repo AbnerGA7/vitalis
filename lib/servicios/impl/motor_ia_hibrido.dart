@@ -315,4 +315,52 @@ class MotorIAHibrido implements MotorIA {
   void reiniciarConversacion() {
     _conversacionIniciada = false;
   }
+
+  @override
+  Stream<RespuestaAsistente> responderEnVivo(
+    String texto, {
+    List<Mensaje> historial = const [],
+  }) async* {
+    final intencion = clasificarIntencion(texto);
+    if (intencion != Intencion.desconocida || !conversacionDisponible) {
+      yield await base.responder(texto, historial: historial);
+      return;
+    }
+
+    try {
+      if (!_conversacionIniciada) {
+        await conversador.reiniciar(
+          instruccionSistema: instruccionSistemaAsistente(obtenerContexto()),
+        );
+        _conversacionIniciada = true;
+      }
+      // El tono se revisa fragmento a fragmento (no solo al final): en
+      // cuanto el término vetado aparece en el texto acumulado, el resto del
+      // turno pasa a emitir la respuesta fija, para que lo que se llegue a
+      // ver u oír en pantalla nunca sea la salida descartada, ni siquiera
+      // a medias.
+      var descartada = false;
+      await for (final parcial in conversador.responderEnVivo(texto)) {
+        if (descartada) continue;
+        if (_tieneTonoInapropiado(parcial)) {
+          descartada = true;
+          yield const RespuestaAsistente(
+            intencion: Intencion.desconocida,
+            texto: _respuestaTonoDescartado,
+            esConversacionLibre: true,
+          );
+          continue;
+        }
+        yield RespuestaAsistente(
+          intencion: Intencion.desconocida,
+          texto: parcial,
+          esConversacionLibre: true,
+        );
+      }
+    } catch (_) {
+      // Mismo límite deliberado que en [responder]: un fallo del motor real
+      // no deja a la persona sin respuesta.
+      yield await base.responder(texto, historial: historial);
+    }
+  }
 }

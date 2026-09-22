@@ -35,6 +35,14 @@ class SintesisVozSistema implements SintesisVoz {
   }
 
   @override
+  Future<void> continuar(String texto) async {
+    if (texto.trim().isEmpty) return;
+    // Sin llamar a detener() antes: es lo que distingue esto de hablar(), y
+    // lo que permite encadenar frases de una misma respuesta sin cortarse.
+    await _motor.speak(texto);
+  }
+
+  @override
   Future<void> detener() async {
     if (_hablando) await _motor.stop();
   }
@@ -50,6 +58,9 @@ class SintesisVozSilenciosa implements SintesisVoz {
 
   @override
   Future<void> hablar(String texto) async {}
+
+  @override
+  Future<void> continuar(String texto) async {}
 
   @override
   Future<void> detener() async {}
