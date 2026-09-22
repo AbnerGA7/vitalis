@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 import '../contratos/contratos.dart';
+import 'texto_modelo_ia.dart';
 
 /// Silencio máximo entre tokens antes de dar la generación por colgada.
 ///
@@ -101,7 +102,7 @@ class ConversadorGemma implements ConversadorIA {
       if (buffer.isEmpty) rethrow;
     }
 
-    final respuesta = buffer.toString().trim();
+    final respuesta = repararMojibake(buffer.toString().trim());
     return respuesta.isEmpty
         ? 'No se me ocurre nada que añadir a eso.'
         : respuesta;

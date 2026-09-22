@@ -14,6 +14,7 @@ import 'dart:async';
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 import '../contratos/contratos.dart';
+import 'texto_modelo_ia.dart';
 
 /// Tope de espera para una generación (receta o rutina). Aquí sí hace falta
 /// la respuesta entera para poder parsear el JSON —a diferencia del chat, no
@@ -61,8 +62,9 @@ class GeneradorContenidoGemma implements GeneradorContenidoIA {
           .generateChatResponse()
           .timeout(_tiempoMaximoGeneracion);
       return switch (respuesta) {
-        TextResponse(:final token) =>
-          token.trim().isEmpty ? null : token.trim(),
+        TextResponse(:final token) => token.trim().isEmpty
+            ? null
+            : repararMojibake(token.trim()),
         _ => null,
       };
     } catch (_) {
