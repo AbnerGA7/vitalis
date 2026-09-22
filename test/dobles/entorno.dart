@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:vitalis/core/nocturne_tema.dart';
 import 'package:vitalis/dominio/modelos/enums.dart';
 import 'package:vitalis/dominio/modelos/perfil.dart';

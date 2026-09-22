@@ -14,7 +14,7 @@ dependencies:
   intl: any
 
   # Estado: una sola fuente de verdad (sección 8 — Estado de aplicación)
-  flutter_riverpod: ^2.6.1
+  flutter_riverpod: ^3.4.3
 
   # Servicios de dispositivo, siempre detrás de contratos (sección 8)
   shared_preferences: ^2.3.3   # ADR-05 · almacén local
@@ -26,13 +26,13 @@ dependencies:
   # sin red. flutter_gemma_mediapipe funciona en arm64 y tambien en x86_64
   # (a diferencia del backend .litertlm, que es solo arm64), lo que amplia
   # el rango de moviles compatibles.
-  flutter_gemma: ^1.8.3
+  flutter_gemma: ^1.8.4
   flutter_gemma_mediapipe: ^1.0.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   fake_async: ^1.3.3
 
 flutter:

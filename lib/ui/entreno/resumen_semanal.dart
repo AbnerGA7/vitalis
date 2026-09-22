@@ -40,7 +40,7 @@ class ResumenSemanal extends ConsumerWidget {
         resumenAccesible: 'Cargando tu resumen de la semana.',
         child: Text('Cargando tu semana…'),
       ),
-      error: (_, __) => const TarjetaVitalis(
+      error: (_, _) => const TarjetaVitalis(
         resumenAccesible: 'No se ha podido leer el historial de sesiones.',
         child: Text('No he podido leer tu historial de sesiones.'),
       ),

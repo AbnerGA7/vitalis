@@ -174,7 +174,7 @@ class _Conversacion extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: Espacio.l),
       itemCount: mensajes.length,
-      separatorBuilder: (_, __) => const SizedBox(height: Espacio.m),
+      separatorBuilder: (_, _) => const SizedBox(height: Espacio.m),
       itemBuilder: (context, indice) => BurbujaMensaje(mensaje: mensajes[indice]),
     );
   }
